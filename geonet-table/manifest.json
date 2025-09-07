@@ -1,0 +1,47 @@
+{
+  "name": "geonet-table",
+  "label": "Geonet table",
+  "type": "widget",
+  "version": "1.14.0",
+  "exbVersion": "1.14.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "This is the widget provides an interactive geonet table",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "publishMessages": [
+    "DATA_RECORDS_SELECTION_CHANGE"
+  ],
+  "messageActions": [],
+  "defaultSize": {
+    "width": 600,
+    "height": 400
+  },
+  "properties": {
+    "coverLayoutBackground": true,
+    "canConsumeDataAction": true,
+    "notAutoLoadUsedFieldsData": true
+  },
+  "dependency": "jimu-arcgis",
+  "excludeDataActions": [
+    "table.*",
+    "arcgis-map.addToMap"
+  ],
+  "dataActions": [
+    {
+      "name": "viewInTable",
+      "label": "View in table",
+      "uri": "data-actions/view-in-table",
+      "icon": "runtime/assets/icons/view-in-table.svg"
+    },
+    {
+      "name": "addToTable",
+      "label": "Add to table",
+      "uri": "data-actions/add-to-table",
+      "icon": "runtime/assets/icons/add-to-table.svg"
+    }
+  ],
+  "translatedLocales": [
+    "en",
+    "he"
+  ]
+}

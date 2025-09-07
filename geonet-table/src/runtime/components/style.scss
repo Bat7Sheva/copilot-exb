@@ -1,0 +1,130 @@
+.table-wrapper {
+    width: 100%;
+}
+
+.table {
+    /* display: block; */
+    overflow: hidden;
+    overflow: auto;
+    table-layout: fixed;
+    width: 100%;
+    height: 250px !important;
+    border-radius: 10px;
+    white-space: nowrap;
+    /* margin: auto; */
+    text-align: center;
+    /* box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 0 20px 0 rgba(0, 0, 0, 0.19); */
+    border-collapse: collapse;
+    overflow-x: auto;
+}
+
+.table thead {
+    background-color: rgba(80, 125, 175, 0.3);
+    color: #076fe5;
+}
+
+.table th {
+    cursor: pointer;
+}
+
+.table th,
+.table td {
+    padding: 0.8rem;
+    width: 100px !important;
+}
+
+.table td {
+    border-top: 0.5px solid #ddd;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table tbody tr:hover {
+    background-color: #eee;
+}
+
+.loading span {
+    opacity: 0;
+    animation: fadeInOut 1.2s infinite;
+}
+
+@keyframes fadeInOut {
+
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* tr {
+    height: 3rem !important;
+} */
+
+/* th {
+    width: 100%;
+    height: 100%;
+} */
+
+.expand {
+    width: 100%
+}
+
+.label {
+    border-radius: 4px;
+    padding: 0.35rem;
+    color: white;
+}
+
+.label-draft {
+    background-color: #777;
+}
+
+.label-saved {
+    background-color: green;
+}
+
+.label-error {
+    background-color: red;
+}
+
+.actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.exit-edit-btn {
+    color: red;
+}
+
+.save-btn {
+    color: green
+}
+
+.actions svg {
+    cursor: pointer;
+}
+
+.alert-style {
+    position: fixed;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    /* animation: fadeIn 4s, fadeOut 4s 2.5s; */
+}
+
+/* @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px) }
+    to { opacity: 1; transform: translateY(0); }
+}
+ 
+@keyframes fadeIn {
+    from { opacity: 1; transform: translateY(0px) }
+    to { opacity: 0; transform: translateY(10px); }
+} */
