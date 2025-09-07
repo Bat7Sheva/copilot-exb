@@ -2167,7 +2167,18 @@ State
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
         </Button>
       </div>
-
+      {/* כפתור סינון לפי תיחום מפה */}
+      <div className='top-button ml-2'>
+        <Button
+          size='sm'
+          onClick={this.onToggleMapExtentFilter}
+          icon
+          title={this.mapExtentFiltered ? "בטל סינון לפי תיחום מפה" : "סנן לפי תיחום מפה"}
+          disabled={!tableLoaded || emptyTable}
+        >
+          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
+        </Button>
+      </div>
       {curLayer.enableSelect && (
         <div className='top-button ml-2'>
           <Button
