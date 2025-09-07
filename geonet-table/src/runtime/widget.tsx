@@ -174,6 +174,8 @@ State
   mapWidgetId: string;
   filtersState = {} as Record<string, { name: string; value: any; query: string }>;
   mapExtentFiltered: boolean = false;
+  mapExtentFilterQuery: string = '';
+  originalDefinitionExpression: string = '';
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -1627,9 +1629,45 @@ State
   }
 
   onToggleMapExtentFilter = async () => {
-    this.mapExtentFiltered = !this.mapExtentFiltered;
-    // const curQuery: any = dataSource && dataSource.getCurrentQueryParams()
-    // this.table.layer.definitionExpression = curQuery.where
+    const mapView = this.currentJimuMapView?.view;
+    const table = this.table;
+    if (!mapView || !table || !table.layer) return;
+ 
+    if (!this.mapExtentFiltered) {
+      // שמור את הביטוי המקורי
+      this.originalDefinitionExpression = table.layer.definitionExpression || '';
+      // קבל את התיחום הנוכחי של המפה
+      const extent = mapView.extent;
+      if (!extent) return;
+      // צור ביטוי מרחבי
+      const spatialQuery = `INTERSECTS(SHAPE, Envelope(${extent.xmin}, ${extent.ymin}, ${extent.xmax}, ${extent.ymax}))`;
+      const content ={
+        'Input Geometry': {
+          "xmin": extent.xmin
+          ,"ymin": extent.ymin
+          ,"xmax": extent.xmax
+          ,"ymax": extent.ymax
+          ,"spatialReference": {"wkid":2039 ,"latestWkid":2039}
+        },
+        'f': 'json',
+        'Return Geometry': false
+      }
+
+          // const result = await postRequestService(content, baseUrl);
+      
+
+      this.mapExtentFilterQuery = spatialQuery;
+      table.layer.definitionExpression = spatialQuery;
+      await this.filterMap(spatialQuery);
+      this.mapExtentFiltered = true;
+    } else {
+      // החזר את הביטוי המקורי
+      table.layer.definitionExpression = this.originalDefinitionExpression;
+      await this.filterMap(this.originalDefinitionExpression);
+      this.mapExtentFiltered = false;
+    }
+    // עדכן את הכותרת של הכפתור
+    this.forceUpdate();
   }
 
   onCleanFilter = async () => {
