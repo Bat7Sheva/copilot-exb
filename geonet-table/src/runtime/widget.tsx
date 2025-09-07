@@ -1229,15 +1229,6 @@ export default class Widget extends React.PureComponent<
           }
         });
 
-        this.table.when(() => {
-          // handleTagChange
-          this.attachTableFilters();
-          // (this.table as any).on("data-source-changed", this.attachTableFilters);
-          // (this.table as any).on("layer-change", this.attachTableFilters);
-          // (this.table as any).on("columns-change", this.attachTableFilters);
-          // (this.table as any).on("refresh", this.attachTableFilters);
-        });
-
         // for table total/selected count
         reactiveUtils.watch(() => (this.table?.viewModel as any)?.size, tableTotal => {
           this.setState({ tableTotal })
@@ -1378,9 +1369,7 @@ export default class Widget extends React.PureComponent<
     }
     this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
     // הוספת טעינת סינון אחרי יצירת טבלה
-    setTimeout(() => {
-      this.attachTableFilters()
-    }, 0)
+    this.deferAttachFilters()
   }
 
   asyncSelectedRebuild = (dataSource: QueriableDataSource) => {
@@ -1448,23 +1437,21 @@ export default class Widget extends React.PureComponent<
     this.props.dispatch(
       appActions.widgetStatePropChange(id, 'activeTabId', dataSourceId)
     )
-    // אין צורך לקרוא ל־attachTableFilters כאן
   }
 
   getMyGrid(): HTMLElement | null {
-    const root = this.refs.tableContainer || document // עדיף להחזיק ref לשורש הווידג׳ט
+    const root = this.refs.tableContainer || document
     return root.querySelector('vaadin-grid')
   }
   
   deferAttachFilters() {
-    // ממתין שה־vaadin-grid החדש יופיע, ואז מפעיל attachTableFilters
     const tryAttach = (attempt = 0) => {
       const grid = this.getMyGrid()
       if (grid) {
-        this.attachTableFilters()   // הפונקציה שלך שמוסיפה את כפתורי/חלונות הסינון
+        this.attachTableFilters()
         return
       }
-      if (attempt < 20) { // עד ~2 שניות
+      if (attempt < 20) {
         setTimeout(() => tryAttach(attempt + 1), 100)
       }
     }
