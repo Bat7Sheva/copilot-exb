@@ -173,6 +173,7 @@ State
   currentJimuMapView: JimuMapView;
   mapWidgetId: string;
   filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+  mapExtentFiltered: boolean = false;
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -1625,6 +1626,12 @@ State
     }
   }
 
+  onToggleMapExtentFilter = async () => {
+    this.mapExtentFiltered = !this.mapExtentFiltered;
+    // const curQuery: any = dataSource && dataSource.getCurrentQueryParams()
+    // this.table.layer.definitionExpression = curQuery.where
+  }
+
   onCleanFilter = async () => {
     this.resetTableExpression();
     this.filtersState =  {} as Record<string, { name: string; value: any; query: string }>;
@@ -2152,8 +2159,20 @@ State
     const dataName = this.formatMessage('tableDataActionLabel', { layer: dataSourceLabel || '' })
 
     return <div className='top-button-list'>
-      {/* geonet - clearFilter */}
 
+      {/* geonet - filter by map extent */}
+      <div className='top-button ml-2'>
+        <Button
+          size='sm'
+          onClick={this.onToggleMapExtentFilter}
+          icon
+          title={this.mapExtentFiltered ? this.formatMessage('undoFilterByMapExtend') : this.formatMessage('filterByMapExtend')}
+          disabled={!tableLoaded || emptyTable } >
+          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
+        </Button>
+      </div>
+
+      {/* geonet - clearFilter */}
       <div className='top-button ml-2'>
         <Button
           size='sm'
@@ -2167,18 +2186,7 @@ State
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
         </Button>
       </div>
-      {/* כפתור סינון לפי תיחום מפה */}
-      <div className='top-button ml-2'>
-        <Button
-          size='sm'
-          onClick={this.onToggleMapExtentFilter}
-          icon
-          title={this.mapExtentFiltered ? "בטל סינון לפי תיחום מפה" : "סנן לפי תיחום מפה"}
-          disabled={!tableLoaded || emptyTable}
-        >
-          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
-        </Button>
-      </div>
+
       {curLayer.enableSelect && (
         <div className='top-button ml-2'>
           <Button
