@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { classNames, css, jsx, defaultMessages as jimuCoreMessages } from "jimu-core";
-import { Button, defaultMessages as jimuUIMessages } from "jimu-ui";
+import { TextInput, defaultMessages as jimuUIMessages } from "jimu-ui";
 import { useEffect, useRef, useState } from "react";
 import { FilterActions } from "./filter-actions";
 import { IMConfig } from "../../config";
@@ -91,6 +91,21 @@ export const FilterDate = ({ field, config, props, initialValue, onSearch }: Fil
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
                     />
+
+                    <TextInput
+                        size='sm'
+                        type='text' 
+                        className='w-100'
+                        value={fromDate}
+                        onChange={(e) => setFromDate(e.target.value)}
+                        onAcceptValue={(e) => setFromDate(e)}
+                        aria-label={formatMessage("fromDatePlaceHolder") || "מתאריך"}
+                        // intl={props.intl}
+                        // onAcceptValue={() => { }}
+                        // onPressEnter={() => { }}
+                        // type="date"
+                    />
+
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
                     <label>עד תאריך</label> {/* {formatMessage("toDatePlaceholder") || "עד תאריך"} */}
