@@ -1508,6 +1508,8 @@ export default class Widget extends React.PureComponent<
       const fields = this.table.layer.fields;
 
       headerCells.forEach((cell, index) => {
+        // בדיקה אם כבר קיים כפתור פילטר בעמודה הזו
+        if (cell.querySelector(".filter-button")) return;
 
         const dataCell = this.getColumnElementFromHeaderCell(cell as HTMLElement);
         if (!dataCell) return;
