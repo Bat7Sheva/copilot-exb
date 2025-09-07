@@ -38,7 +38,8 @@ import {
   DataSourceTypes,
   ServiceManager,
   SessionManager,
-  ContainerType
+  ContainerType,
+  IntlProvider
 } from 'jimu-core'
 import { Global } from 'jimu-theme'
 import {
@@ -164,8 +165,8 @@ export interface tableSelectedItem {
 }
 
 export default class Widget extends React.PureComponent<
-  AllWidgetProps<IMConfig> & Props,
-  State
+AllWidgetProps<IMConfig> & Props,
+State
 > {
   static versionManager = versionManager
   table: __esri.FeatureTable
@@ -249,7 +250,7 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  constructor(props) {
+  constructor (props) {
     super(props)
 
     this.state = {
@@ -298,7 +299,7 @@ export default class Widget extends React.PureComponent<
     this.dsManager = DataSourceManager.getInstance()
   }
 
-  static getDerivedStateFromProps(nextProps, prevState) {
+  static getDerivedStateFromProps (nextProps, prevState) {
     const { config } = nextProps
     const { layersConfig } = config
     const { activeTabId } = prevState
@@ -345,10 +346,10 @@ export default class Widget extends React.PureComponent<
         })
       })
     }
-    this.initializeCurrentMapWidget()
+      this.initializeCurrentMapWidget()
   }
 
-  componentWillUnmount() {
+  componentWillUnmount () {
     const { id } = this.props
     this.promises.forEach(p => { p.cancel() })
     this.destoryTable()
@@ -357,7 +358,7 @@ export default class Widget extends React.PureComponent<
     MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
   }
 
-  componentDidUpdate(prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
+  componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
     const { activeTabId, dataSource, tableLoaded } = this.state
     const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
@@ -594,7 +595,7 @@ export default class Widget extends React.PureComponent<
 
   onActiveViewChange = (jimuMapView: JimuMapView) => {
     if (jimuMapView) {
-      this.currentJimuMapView = jimuMapView;
+      this.currentJimuMapView = jimuMapView;      
     }
   };
 
@@ -949,14 +950,14 @@ export default class Widget extends React.PureComponent<
     const selectedQuery =
       selectedItems && selectedItems.length > 0
         ? `${objectIdField} IN (${selectedItems
-          .map(item => {
-            if (item.dataSource) {
-              return item.getId()
-            } else {
-              return item
-            }
-          })
-          .join()})`
+            .map(item => {
+              if (item.dataSource) {
+                return item.getId()
+              } else {
+                return item
+              }
+            })
+            .join()})`
         : ''
     if (versionChangeClear) dataSource.clearSelection()
     const syncSqlResult = (records) => {
@@ -1368,7 +1369,8 @@ export default class Widget extends React.PureComponent<
       }
     }
     this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
-    // הוספת טעינת סינון אחרי יצירת טבלה
+    
+    // add filtration charging after creating a table
     this.deferAttachFilters()
   }
 
@@ -1394,7 +1396,7 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  async destoryTable() {
+  async destoryTable () {
     if (this.table) {
       (this.table as any).menu.open = false
       !this.table.destroyed && this.table.destroy()
@@ -1553,7 +1555,10 @@ export default class Widget extends React.PureComponent<
         button.addEventListener("click", () => {
           popupContainer.style.display = "block";
 
-          root.render(<FilterPopup field={field} config={this.props.config} props={this.props} initialValue={this.filtersState[field.name]?.value} cleanFilter={updateFilter} />);
+          root.render(
+            <IntlProvider locale="he" messages={messages}>
+              <FilterPopup field={field} config={this.props.config} props={this.props} initialValue={this.filtersState[field.name]?.value} cleanFilter={updateFilter} />
+            </IntlProvider>);
           setTimeout(() => {
             document.addEventListener("click", outsideClickListener);
             document.addEventListener("keydown", handleEscape);
@@ -1622,7 +1627,7 @@ export default class Widget extends React.PureComponent<
 
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+    this.filtersState =  {} as Record<string, { name: string; value: any; query: string }>;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -1665,11 +1670,11 @@ export default class Widget extends React.PureComponent<
 
         (featureDS as QueriableDataSource)?.updateQueryParams(queryParams, this.mapWidgetId);
       } else {
-        const result = await queryService(layerUrl, query, [], true, false);
-        if (result?.features?.length > 0) {
-          await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
-          await drawGraghicOnMap(result.features[0].geometry, mapView);
-        }
+          const result = await queryService(layerUrl, query, [], true, false);
+          if (result?.features?.length > 0) {
+            await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
+            await drawGraghicOnMap(result.features[0].geometry, mapView);
+          }
       }
     } catch (error) {
       console.log('error', error);
@@ -1880,7 +1885,7 @@ export default class Widget extends React.PureComponent<
                 </div>
               </Popper>
             </div>
-          )
+            )
           : (
             <div className='d-flex align-items-center table-search'>
               <TextInput
@@ -1894,7 +1899,7 @@ export default class Widget extends React.PureComponent<
                 title={hint || this.formatMessage('search')}
               />
             </div>
-          )}
+            )}
       </div>
     )
   }
@@ -2042,7 +2047,7 @@ export default class Widget extends React.PureComponent<
             {bottomResponsiveFlag
               ? <Tooltip title={autoRefreshLoadingString} showArrow placement='top-end'>
                 <Button icon size='sm' type='tertiary' className='d-inline jimu-outline-inside border-0 p-0'>
-                  <InfoOutlined size={14} />
+                  <InfoOutlined size={14}/>
                 </Button>
               </Tooltip>
               : autoRefreshLoadingString
@@ -2087,7 +2092,7 @@ export default class Widget extends React.PureComponent<
 
   customShowHideDropdownButton = () => {
     return <Fragment>
-      <ListVisibleOutlined className='mr-1' />
+      <ListVisibleOutlined className='mr-1'/>
       {this.formatMessage('showHideCols')}
     </Fragment>
   }
@@ -2158,8 +2163,8 @@ export default class Widget extends React.PureComponent<
           disabled={!tableLoaded || emptyTable || !hasFilterTable}
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-button' : ''}
         >
-          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter"
-            className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''} />
+          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter" 
+          className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
         </Button>
       </div>
 
@@ -2176,7 +2181,7 @@ export default class Widget extends React.PureComponent<
             }
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
-            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip />}
+            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip/>}
           </Button>
         </div>
       )}
@@ -2313,27 +2318,27 @@ export default class Widget extends React.PureComponent<
           {curLayer.enableSelect &&
             <Fragment>
               <DropdownItem key='showSelection' onClick={this.onShowSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                {selectQueryFlag ? <MenuOutlined className='mr-1' /> : <ShowSelectionOutlined className='mr-1' autoFlip />}
+                {selectQueryFlag ? <MenuOutlined className='mr-1'/> : <ShowSelectionOutlined className='mr-1' autoFlip/>}
                 {selectQueryFlag
                   ? this.formatMessage('showAll')
                   : this.formatMessage('showSelection')
                 }
               </DropdownItem>
               <DropdownItem key='clearSelection' onClick={this.onSelectionClear} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                <ClearSelectionGeneralOutlined className='mr-1' />
+                <ClearSelectionGeneralOutlined className='mr-1'/>
                 {this.formatMessage('clearSelection')}
               </DropdownItem>
             </Fragment>
           }
           {curLayer.enableRefresh &&
             <DropdownItem key='refresh' onClick={this.onTableRefresh} disabled={!tableLoaded || emptyTable}>
-              <RefreshOutlined className='mr-1' />
+              <RefreshOutlined className='mr-1'/>
               {this.formatMessage('refresh')}
             </DropdownItem>
           }
           {curLayer.enableEdit && !notAllowDel && false &&
             <DropdownItem key='delete' onClick={this.onDeleteSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-              <TrashOutlined className='mr-1' />
+              <TrashOutlined className='mr-1'/>
               {this.formatMessage('delete')}
             </DropdownItem>
           }
@@ -2376,7 +2381,7 @@ export default class Widget extends React.PureComponent<
           }
         </Fragment>
       }
-    </div>
+     </div>
   }
 
   render() {
@@ -2440,8 +2445,9 @@ export default class Widget extends React.PureComponent<
         <div className='surface-1 border-0 h-100'>
           <div className='table-indent'>
             <div
-              className={`d-flex ${horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
-                }`}
+              className={`d-flex ${
+                horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
+              }`}
             >
               {/* someting wrong in lint check for Tabs */}
               {horizontalTag
@@ -2466,7 +2472,7 @@ export default class Widget extends React.PureComponent<
                       }
                     </Tabs>
                   </Fragment>
-                )
+                  )
                 : (
                   <Select
                     size='sm'
@@ -2480,31 +2486,32 @@ export default class Widget extends React.PureComponent<
                           <div className='table-action-option'>
                             <div className='table-action-option-tab' title={item.name}>{item.name}</div>
                             {item.dataActionObject &&
-                              <div className='table-action-option-close'>
-                                <Button
-                                  size='sm'
-                                  icon
-                                  type='tertiary'
-                                  onClick={(evt) => { this.onCloseTab(item.id, evt) }}
-                                >
-                                  <CloseOutlined size='s' />
-                                </Button>
-                              </div>
+                            <div className='table-action-option-close'>
+                              <Button
+                                size='sm'
+                                icon
+                                type='tertiary'
+                                onClick={(evt) => { this.onCloseTab(item.id, evt) }}
+                              >
+                                <CloseOutlined size='s' />
+                              </Button>
+                            </div>
                             }
                           </div>
                         </option>
                       )
                     })}
                   </Select>
-                )
+                  )
               }
               {!searchOn && toolListNode}
             </div>
             <div
-              className={`${arrangeType === TableArrangeType.Tabs
-                ? 'horizontal-render-con'
-                : 'dropdown-render-con'
-                }`}
+              className={`${
+                arrangeType === TableArrangeType.Tabs
+                  ? 'horizontal-render-con'
+                  : 'dropdown-render-con'
+              }`}
             >
               {searchOn && this.renderSearchTools(curLayer?.searchHint)}
               {searchOn &&
