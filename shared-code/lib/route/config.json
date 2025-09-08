@@ -1,5 +1,0 @@
-{
-	 	"queryExpressions": {
-		"queryPointByRoute": "ROADNUM = '{0}' "
-	}
-}

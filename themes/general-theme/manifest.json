@@ -1,0 +1,21 @@
+{
+  "name": "general-theme",
+  "label": "general-theme",
+  "type": "theme",
+  "thumbnails ": [],
+  "font": {
+    "fontFamily": "almoni-dl",
+    "color": "#3f94c1",
+    "font-weight":500
+  },
+  "version": "1.14.0",
+  "exbVersion": "1.14.0",
+  "author": "BatshevaL",
+  "description": "This is a general-theme.",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "translatedLocales": [
+    "en",
+    "he"
+  ]
+}
