@@ -38,7 +38,8 @@ import {
   DataSourceTypes,
   ServiceManager,
   SessionManager,
-  ContainerType
+  ContainerType,
+  IntlProvider
 } from 'jimu-core'
 import { Global } from 'jimu-theme'
 import {
@@ -164,14 +165,17 @@ export interface tableSelectedItem {
 }
 
 export default class Widget extends React.PureComponent<
-  AllWidgetProps<IMConfig> & Props,
-  State
+AllWidgetProps<IMConfig> & Props,
+State
 > {
   static versionManager = versionManager
   table: __esri.FeatureTable
   currentJimuMapView: JimuMapView;
   mapWidgetId: string;
   filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+  mapExtentFiltered: boolean = false;
+  mapExtentFilterQuery: string = '';
+  originalDefinitionExpression: string = '';
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -249,7 +253,7 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  constructor(props) {
+  constructor (props) {
     super(props)
 
     this.state = {
@@ -298,7 +302,7 @@ export default class Widget extends React.PureComponent<
     this.dsManager = DataSourceManager.getInstance()
   }
 
-  static getDerivedStateFromProps(nextProps, prevState) {
+  static getDerivedStateFromProps (nextProps, prevState) {
     const { config } = nextProps
     const { layersConfig } = config
     const { activeTabId } = prevState
@@ -345,10 +349,10 @@ export default class Widget extends React.PureComponent<
         })
       })
     }
-    this.initializeCurrentMapWidget()
+      this.initializeCurrentMapWidget()
   }
 
-  componentWillUnmount() {
+  componentWillUnmount () {
     const { id } = this.props
     this.promises.forEach(p => { p.cancel() })
     this.destoryTable()
@@ -357,7 +361,7 @@ export default class Widget extends React.PureComponent<
     MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
   }
 
-  componentDidUpdate(prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
+  componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
     const { activeTabId, dataSource, tableLoaded } = this.state
     const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
@@ -594,7 +598,7 @@ export default class Widget extends React.PureComponent<
 
   onActiveViewChange = (jimuMapView: JimuMapView) => {
     if (jimuMapView) {
-      this.currentJimuMapView = jimuMapView;
+      this.currentJimuMapView = jimuMapView;      
     }
   };
 
@@ -949,14 +953,14 @@ export default class Widget extends React.PureComponent<
     const selectedQuery =
       selectedItems && selectedItems.length > 0
         ? `${objectIdField} IN (${selectedItems
-          .map(item => {
-            if (item.dataSource) {
-              return item.getId()
-            } else {
-              return item
-            }
-          })
-          .join()})`
+            .map(item => {
+              if (item.dataSource) {
+                return item.getId()
+              } else {
+                return item
+              }
+            })
+            .join()})`
         : ''
     if (versionChangeClear) dataSource.clearSelection()
     const syncSqlResult = (records) => {
@@ -1229,233 +1233,6 @@ export default class Widget extends React.PureComponent<
           }
         });
 
-        this.table.when(() => {
-          // handleTagChange
-          this.attachTableFilters();
-          (this.table as any).on("data-source-changed", this.attachTableFilters);
-          (this.table as any).on("layer-change", this.attachTableFilters);
-          (this.table as any).on("columns-change", this.attachTableFilters);
-          (this.table as any).on("refresh", this.attachTableFilters);
-        });
-
-
-        // this.table.when(() => {
-        //   this.attachTableFilters();
-        //   // מתחילים לעקוב אחרי שינויים ב־DOM
-        //   const tableContainer = document.querySelector(".esri-feature-table");
-        //   if (!tableContainer) {
-        //     console.warn("לא נמצא אלמנט של הטבלה בדף");
-        //     return;
-        //   }
-        //   const observer = new MutationObserver((mutations) => {
-        //     for (const mutation of mutations) {
-        //       if (mutation.type === "childList") {
-        //         // בודקים אם נוסף מחדש vaadin-grid
-        //         const grid = (mutation.target as HTMLElement).querySelector("vaadin-grid");
-        //         if (grid) {
-        //           console.log("טבלה נטענה מחדש → מוסיף שוב סינון");
-        //           this.attachTableFilters();
-        //         }
-        //       }
-        //     }
-        //   });
-        //   observer.observe(tableContainer, {
-        //     childList: true,
-        //     subtree: true
-        //   });
-        // });
-
-
-        // this.table.when(() => {
-        //   const vaadinGrid = document.querySelector("vaadin-grid");
-
-        //   vaadinGrid.addEventListener("dblclick", (event: MouseEvent) => {
-
-        //     const ctx = (vaadinGrid as any).getEventContext(event);
-
-        //     if (ctx && ctx.item) {
-        //       const item = ctx.item; // row data
-
-        //       if (item?.objectId) {
-        //         this.filterMap(`objectId=${item?.objectId}`, true);
-        //       }
-        //     }
-        //   });
-
-        //   if (vaadinGrid && vaadinGrid.shadowRoot) {
-        //     const headerCells = vaadinGrid.shadowRoot.querySelectorAll("thead th");
-
-        //     const fields = this.table.layer.fields;
-
-        //     headerCells.forEach((cell, index) => {
-
-        //       const dataCell = getColumnElementFromHeaderCell(cell as HTMLElement);
-        //       if (!dataCell) return;
-
-        //       const field = fields.find(f => f.name === (dataCell as any).path && f.alias === (dataCell as any).title);
-        //       if (!field) return;
-
-        //       const wrapper = document.createElement("div");
-        //       wrapper.style.position = "relative";
-        //       wrapper.style.display = "inline-block";
-        //       wrapper.style.marginLeft = "15%";
-
-
-        //       const button = document.createElement("button");
-        //       button.className = "filter-button";
-        //       button.style.backgroundImage = `url(${this.filterImage})`;
-        //       button.style.backgroundRepeat = "no-repeat";
-        //       button.style.backgroundPosition = "center";
-        //       button.style.backgroundSize = "contain";
-        //       button.style.width = "15px";
-        //       button.style.height = "15px";
-        //       button.style.border = "none";
-        //       button.style.cursor = "pointer";
-        //       button.textContent = "";
-
-        //       wrapper.appendChild(button);
-        //       cell.appendChild(wrapper);
-
-        //       const popupContainer = document.createElement("div");
-        //       popupContainer.style.position = "absolute";
-        //       popupContainer.style.top = "100%";
-        //       popupContainer.style.left = "0";
-        //       popupContainer.style.zIndex = "1000";
-        //       popupContainer.style.marginTop = "4px";
-        //       popupContainer.style.display = "none";
-
-        //       wrapper.appendChild(popupContainer);
-
-        //       const root = ReactDOM.createRoot(popupContainer);
-
-        //       button.addEventListener("click", () => {
-        //         popupContainer.style.display = "block";
-
-        //         root.render(<FilterPopup field={field} config={this.props.config} props={this.props} initialValue={this.filtersState[field.name]?.value} cleanFilter={updateFilter} />);
-        //         setTimeout(() => {
-        //           document.addEventListener("click", outsideClickListener);
-        //           document.addEventListener("keydown", handleEscape);
-        //         }, 0);
-        //       });
-
-        //       // Function to update filter state and layer definition expression
-        //       const updateFilter = async (fieldName: string, value: any, query?: string) => {
-        //         // Updating the internal state
-        //         if (query && value !== undefined && value !== null && value !== "") {
-        //           this.filtersState[fieldName] = {
-        //             name: fieldName,
-        //             value: value,
-        //             query: query
-        //           };
-        //           button.style.backgroundImage = `url(${this.cleanFilterImage})`;
-        //         } else {
-        //           delete this.filtersState[fieldName];
-        //           button.style.backgroundImage = `url(${this.filterImage})`;
-        //         }
-
-        //         // Rebuilding the phrase based on all active filters
-        //         const activeQueries = Object.values(this.filtersState).map(f => f.query);
-        //         const defExp = activeQueries.length > 0 ? activeQueries.join(" AND ") : "";
-
-        //         // Update the phrase in the layer
-        //         this.table.layer.definitionExpression = defExp;
-
-        //         this.filterMap(defExp);
-
-        //         closePopup();
-        //       };
-
-        //       // const filterMap = async (query: string) => {
-        //       //   const mapView = this.currentJimuMapView.view as __esri.MapView;
-        //       //   const layer = this.table.layer;
-        //       //   const layerUrl= `${layer.url}/${layer.layerId}`;
-
-
-        //       //   const allLayers = getAllLayers(mapView);
-
-        //       //   if (!allLayers || allLayers.length <= 0) {
-        //       //       console.error("No layes in the map.");
-        //       //   }
-
-        //       //   const targetLayer = getLayerByLayerUrl(allLayers, layerUrl);
-
-        //       //   if (!targetLayer) {
-        //       //     console.error(`layer ${layerUrl} not found.`);
-        //       //   }
-
-        //       //   try {
-        //       //     // filter layer
-        //       //     setLayerVisibility(targetLayer, true);
-        //       //     const jLayerView = getjimuLayerViewByLayer(this.currentJimuMapView, targetLayer);
-        //       //     const featureDS = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
-        //       //     const queryParams = { where: query } as any
-
-        //       //     (featureDS as QueriableDataSource)?.updateQueryParams(queryParams, this.mapWidgetId);
-
-        //       //   } catch (error) {
-        //       //     console.log('error', error);
-        //       //   }
-        //       // }
-
-        //       const closePopup = () => {
-        //         popupContainer.style.display = "none";
-        //         root.render(<React.Fragment></React.Fragment>);
-
-        //         document.removeEventListener("click", outsideClickListener);
-        //         document.removeEventListener("keydown", handleEscape);
-        //       };
-
-        //       const outsideClickListener = (event: MouseEvent) => {
-        //         const path = event.composedPath(); // Support for shadow DOM
-
-        //         const clickedInside =
-        //           path.includes(wrapper) || path.includes(popupContainer);
-
-        //         if (!clickedInside) {
-        //           closePopup();
-        //         }
-        //       };
-
-        //       const handleEscape = (event: KeyboardEvent) => {
-        //         if (event.key === "Escape") {
-        //           closePopup();
-        //         }
-        //       };
-
-        //       // // Cleanup listeners when popup is closed
-        //       // root.unmount = () => {
-        //       //   document.removeEventListener("click", outsideClickListener);
-        //       //   document.removeEventListener("keydown", handleEscape);
-        //       // };
-        //     });
-
-        //   } else {
-        //     console.warn("לא נמצא vaadin-grid או שאין לו shadowRoot");
-        //   }
-        // });
-
-
-        // function getColumnElementFromHeaderCell(thElement: HTMLElement): HTMLElement | null {
-        //   const slot = thElement.querySelector("slot");
-        //   if (!slot) return null;
-
-        //   const assignedNodes = slot.assignedNodes({ flatten: true });
-
-        //   for (const node of assignedNodes) {
-        //     if (node instanceof HTMLElement) {
-        //       const headerContentDiv = node.querySelector(".esri-field-column__header-content");
-        //       if (headerContentDiv) {
-        //         const column = headerContentDiv.querySelector("vaadin-grid-sorter");
-        //         if (column) {
-        //           return column;
-        //         }
-        //       }
-        //     }
-        //   }
-
-        //   return null;
-        // }
-
         // for table total/selected count
         reactiveUtils.watch(() => (this.table?.viewModel as any)?.size, tableTotal => {
           this.setState({ tableTotal })
@@ -1595,6 +1372,9 @@ export default class Widget extends React.PureComponent<
       }
     }
     this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
+    
+    // add filtration charging after creating a table
+    this.deferAttachFilters()
   }
 
   asyncSelectedRebuild = (dataSource: QueriableDataSource) => {
@@ -1619,7 +1399,7 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  async destoryTable() {
+  async destoryTable () {
     if (this.table) {
       (this.table as any).menu.open = false
       !this.table.destroyed && this.table.destroy()
@@ -1652,39 +1432,31 @@ export default class Widget extends React.PureComponent<
   }
 
   handleTagChange = evt => {
-    // this.attachTableFilters()
-
     const dataSourceId = evt?.target?.value
     const { id } = this.props
     this.setState({
       activeTabId: dataSourceId,
       selectQueryFlag: false,
       tableSelected: 0
-    }, () => {
-      // לחכות רינדור, ואז להזריק פילטרים
-      this.deferAttachFilters()
     })
     this.props.dispatch(
       appActions.widgetStatePropChange(id, 'activeTabId', dataSourceId)
     )
-    this.deferAttachFilters()
-
   }
 
   getMyGrid(): HTMLElement | null {
-    const root = this.refs.tableContainer || document // עדיף להחזיק ref לשורש הווידג׳ט
+    const root = this.refs.tableContainer || document
     return root.querySelector('vaadin-grid')
   }
   
   deferAttachFilters() {
-    // ממתין שה־vaadin-grid החדש יופיע, ואז מפעיל attachTableFilters
     const tryAttach = (attempt = 0) => {
       const grid = this.getMyGrid()
       if (grid) {
-        this.attachTableFilters()   // הפונקציה שלך שמוסיפה את כפתורי/חלונות הסינון
+        this.attachTableFilters()
         return
       }
-      if (attempt < 20) { // עד ~2 שניות
+      if (attempt < 20) {
         setTimeout(() => tryAttach(attempt + 1), 100)
       }
     }
@@ -1741,6 +1513,8 @@ export default class Widget extends React.PureComponent<
       const fields = this.table.layer.fields;
 
       headerCells.forEach((cell, index) => {
+        // בדיקה אם כבר קיים כפתור פילטר בעמודה הזו
+        if (cell.querySelector(".filter-button")) return;
 
         const dataCell = this.getColumnElementFromHeaderCell(cell as HTMLElement);
         if (!dataCell) return;
@@ -1784,7 +1558,10 @@ export default class Widget extends React.PureComponent<
         button.addEventListener("click", () => {
           popupContainer.style.display = "block";
 
-          root.render(<FilterPopup field={field} config={this.props.config} props={this.props} initialValue={this.filtersState[field.name]?.value} cleanFilter={updateFilter} />);
+          root.render(
+            <IntlProvider locale="he" messages={messages}>
+              <FilterPopup field={field} config={this.props.config} props={this.props} initialValue={this.filtersState[field.name]?.value} cleanFilter={updateFilter} />
+            </IntlProvider>);
           setTimeout(() => {
             document.addEventListener("click", outsideClickListener);
             document.addEventListener("keydown", handleEscape);
@@ -1851,9 +1628,51 @@ export default class Widget extends React.PureComponent<
     }
   }
 
+  onToggleMapExtentFilter = async () => {
+    const mapView = this.currentJimuMapView?.view;
+    const table = this.table;
+    if (!mapView || !table || !table.layer) return;
+ 
+    if (!this.mapExtentFiltered) {
+      // שמור את הביטוי המקורי
+      this.originalDefinitionExpression = table.layer.definitionExpression || '';
+      // קבל את התיחום הנוכחי של המפה
+      const extent = mapView.extent;
+      if (!extent) return;
+      // צור ביטוי מרחבי
+      const spatialQuery = `INTERSECTS(SHAPE, Envelope(${extent.xmin}, ${extent.ymin}, ${extent.xmax}, ${extent.ymax}))`;
+      const content ={
+        'Input Geometry': {
+          "xmin": extent.xmin
+          ,"ymin": extent.ymin
+          ,"xmax": extent.xmax
+          ,"ymax": extent.ymax
+          ,"spatialReference": {"wkid":2039 ,"latestWkid":2039}
+        },
+        'f': 'json',
+        'Return Geometry': false
+      }
+
+          // const result = await postRequestService(content, baseUrl);
+      
+
+      this.mapExtentFilterQuery = spatialQuery;
+      table.layer.definitionExpression = spatialQuery;
+      await this.filterMap(spatialQuery);
+      this.mapExtentFiltered = true;
+    } else {
+      // החזר את הביטוי המקורי
+      table.layer.definitionExpression = this.originalDefinitionExpression;
+      await this.filterMap(this.originalDefinitionExpression);
+      this.mapExtentFiltered = false;
+    }
+    // עדכן את הכותרת של הכפתור
+    this.forceUpdate();
+  }
+
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+    this.filtersState =  {} as Record<string, { name: string; value: any; query: string }>;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -1896,11 +1715,11 @@ export default class Widget extends React.PureComponent<
 
         (featureDS as QueriableDataSource)?.updateQueryParams(queryParams, this.mapWidgetId);
       } else {
-        const result = await queryService(layerUrl, query, [], true, false);
-        if (result?.features?.length > 0) {
-          await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
-          await drawGraghicOnMap(result.features[0].geometry, mapView);
-        }
+          const result = await queryService(layerUrl, query, [], true, false);
+          if (result?.features?.length > 0) {
+            await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
+            await drawGraghicOnMap(result.features[0].geometry, mapView);
+          }
       }
     } catch (error) {
       console.log('error', error);
@@ -2111,7 +1930,7 @@ export default class Widget extends React.PureComponent<
                 </div>
               </Popper>
             </div>
-          )
+            )
           : (
             <div className='d-flex align-items-center table-search'>
               <TextInput
@@ -2125,7 +1944,7 @@ export default class Widget extends React.PureComponent<
                 title={hint || this.formatMessage('search')}
               />
             </div>
-          )}
+            )}
       </div>
     )
   }
@@ -2273,7 +2092,7 @@ export default class Widget extends React.PureComponent<
             {bottomResponsiveFlag
               ? <Tooltip title={autoRefreshLoadingString} showArrow placement='top-end'>
                 <Button icon size='sm' type='tertiary' className='d-inline jimu-outline-inside border-0 p-0'>
-                  <InfoOutlined size={14} />
+                  <InfoOutlined size={14}/>
                 </Button>
               </Tooltip>
               : autoRefreshLoadingString
@@ -2318,7 +2137,7 @@ export default class Widget extends React.PureComponent<
 
   customShowHideDropdownButton = () => {
     return <Fragment>
-      <ListVisibleOutlined className='mr-1' />
+      <ListVisibleOutlined className='mr-1'/>
       {this.formatMessage('showHideCols')}
     </Fragment>
   }
@@ -2378,8 +2197,20 @@ export default class Widget extends React.PureComponent<
     const dataName = this.formatMessage('tableDataActionLabel', { layer: dataSourceLabel || '' })
 
     return <div className='top-button-list'>
-      {/* geonet - clearFilter */}
 
+      {/* geonet - filter by map extent */}
+      <div className='top-button ml-2'>
+        <Button
+          size='sm'
+          onClick={this.onToggleMapExtentFilter}
+          icon
+          title={this.mapExtentFiltered ? this.formatMessage('undoFilterByMapExtend') : this.formatMessage('filterByMapExtend')}
+          disabled={!tableLoaded || emptyTable } >
+          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
+        </Button>
+      </div>
+
+      {/* geonet - clearFilter */}
       <div className='top-button ml-2'>
         <Button
           size='sm'
@@ -2389,8 +2220,8 @@ export default class Widget extends React.PureComponent<
           disabled={!tableLoaded || emptyTable || !hasFilterTable}
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-button' : ''}
         >
-          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter"
-            className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''} />
+          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter" 
+          className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
         </Button>
       </div>
 
@@ -2407,7 +2238,7 @@ export default class Widget extends React.PureComponent<
             }
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
-            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip />}
+            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip/>}
           </Button>
         </div>
       )}
@@ -2544,27 +2375,27 @@ export default class Widget extends React.PureComponent<
           {curLayer.enableSelect &&
             <Fragment>
               <DropdownItem key='showSelection' onClick={this.onShowSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                {selectQueryFlag ? <MenuOutlined className='mr-1' /> : <ShowSelectionOutlined className='mr-1' autoFlip />}
+                {selectQueryFlag ? <MenuOutlined className='mr-1'/> : <ShowSelectionOutlined className='mr-1' autoFlip/>}
                 {selectQueryFlag
                   ? this.formatMessage('showAll')
                   : this.formatMessage('showSelection')
                 }
               </DropdownItem>
               <DropdownItem key='clearSelection' onClick={this.onSelectionClear} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                <ClearSelectionGeneralOutlined className='mr-1' />
+                <ClearSelectionGeneralOutlined className='mr-1'/>
                 {this.formatMessage('clearSelection')}
               </DropdownItem>
             </Fragment>
           }
           {curLayer.enableRefresh &&
             <DropdownItem key='refresh' onClick={this.onTableRefresh} disabled={!tableLoaded || emptyTable}>
-              <RefreshOutlined className='mr-1' />
+              <RefreshOutlined className='mr-1'/>
               {this.formatMessage('refresh')}
             </DropdownItem>
           }
           {curLayer.enableEdit && !notAllowDel && false &&
             <DropdownItem key='delete' onClick={this.onDeleteSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-              <TrashOutlined className='mr-1' />
+              <TrashOutlined className='mr-1'/>
               {this.formatMessage('delete')}
             </DropdownItem>
           }
@@ -2607,7 +2438,7 @@ export default class Widget extends React.PureComponent<
           }
         </Fragment>
       }
-    </div>
+     </div>
   }
 
   render() {
@@ -2671,8 +2502,9 @@ export default class Widget extends React.PureComponent<
         <div className='surface-1 border-0 h-100'>
           <div className='table-indent'>
             <div
-              className={`d-flex ${horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
-                }`}
+              className={`d-flex ${
+                horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
+              }`}
             >
               {/* someting wrong in lint check for Tabs */}
               {horizontalTag
@@ -2697,7 +2529,7 @@ export default class Widget extends React.PureComponent<
                       }
                     </Tabs>
                   </Fragment>
-                )
+                  )
                 : (
                   <Select
                     size='sm'
@@ -2711,31 +2543,32 @@ export default class Widget extends React.PureComponent<
                           <div className='table-action-option'>
                             <div className='table-action-option-tab' title={item.name}>{item.name}</div>
                             {item.dataActionObject &&
-                              <div className='table-action-option-close'>
-                                <Button
-                                  size='sm'
-                                  icon
-                                  type='tertiary'
-                                  onClick={(evt) => { this.onCloseTab(item.id, evt) }}
-                                >
-                                  <CloseOutlined size='s' />
-                                </Button>
-                              </div>
+                            <div className='table-action-option-close'>
+                              <Button
+                                size='sm'
+                                icon
+                                type='tertiary'
+                                onClick={(evt) => { this.onCloseTab(item.id, evt) }}
+                              >
+                                <CloseOutlined size='s' />
+                              </Button>
+                            </div>
                             }
                           </div>
                         </option>
                       )
                     })}
                   </Select>
-                )
+                  )
               }
               {!searchOn && toolListNode}
             </div>
             <div
-              className={`${arrangeType === TableArrangeType.Tabs
-                ? 'horizontal-render-con'
-                : 'dropdown-render-con'
-                }`}
+              className={`${
+                arrangeType === TableArrangeType.Tabs
+                  ? 'horizontal-render-con'
+                  : 'dropdown-render-con'
+              }`}
             >
               {searchOn && this.renderSearchTools(curLayer?.searchHint)}
               {searchOn &&

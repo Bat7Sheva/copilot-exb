@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { classNames, css, jsx, defaultMessages as jimuCoreMessages } from "jimu-core";
-import { Button, defaultMessages as jimuUIMessages } from "jimu-ui";
+import { defaultMessages as jimuUIMessages } from "jimu-ui";
 import { useEffect, useRef, useState } from "react";
 import { FilterActions } from "./filter-actions";
 import { IMConfig } from "../../config";
