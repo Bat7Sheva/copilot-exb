@@ -70,6 +70,28 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
       border-width: revert;
       border-color: black;
     }
+
+    typography {
+    font-family: Almoni DL AAA;
+    font-weight: 700;
+    font-style: Bold;
+    font-size: 12px;
+    leading-trim: NONE;
+    line-height: 16px;
+    letter-spacing: 0%;
+    text-align: center;
+    background: #FFFFFF;
+    }
+
+  frame {
+  // colors
+  background: linear-gradient(0deg, #34394F, #34394F),
+  linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+
+  // shadws and blurs
+  box-shadow: 0px 4px 40px 0px #0000004D;
+
+}
   `;
 
   return (
