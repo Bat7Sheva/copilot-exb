@@ -1,0 +1,19 @@
+{
+  "wazeLayers": [
+    {
+      "name": "Waze accidents",
+      "label": "ווייז תאונות",
+      "url": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/12"
+    },
+    {
+      "name": "Waze disruptions to movement",
+      "label": "ווייז הפרעות לתנועה",
+      "url": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/18"
+    },
+    {
+      "name": "Waze real-time speeds",
+      "label": "ווייז מהירויות בזמן אמת",
+      "url": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/17"
+    }
+  ]
+}
