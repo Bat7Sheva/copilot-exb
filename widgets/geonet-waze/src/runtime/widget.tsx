@@ -59,13 +59,24 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
   const style = css`
     .waze-btn {
+      background: linear-gradient(0deg, #34394F, #34394F),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+      box-shadow: 0px 4px 40px 0px #0000004D;
       background-repeat: no-repeat;
       background-position: center 75%;
       background-size: 40% !important;
-      background-color: rgb(75, 93, 165);
+      font-family: 'Almoni DL AAA', sans-serif;
+      font-weight: 700;
+      font-style: bold;
+      font-size: 12px;
+      line-height: 16px;
+      letter-spacing: 0%;
+      text-align: center;
+      color: #FFFFFF;
     }
     .waze-btn:hover, .waze-btn:active, .selected {
-      background-color:rgb(75, 93, 165);
+      background: linear-gradient(0deg, #34394F, #34394F),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
       font-weight: bold;
       border-width: revert;
       border-color: black;
