@@ -1,0 +1,31 @@
+{
+  "name": "geonet-add-data",
+  "label": "Geonet Add Data",
+  "type": "widget",
+  "version": "1.14.0",
+  "exbVersion": "1.14.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "This is the widget which allows you to add data by searching for layers in ArcGIS content, entering URLs, or uploading local files.",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "defaultSize": {
+    "width": 400,
+    "height": 400
+  },
+  "publishMessages": [
+    "DATA_SOURCES_CHANGE"
+  ],
+  "excludeDataActions": [
+    "arcgis-map.showOnMap",
+    "elevation-profile.*",
+    "table.viewInTable"
+  ],
+  "properties": {
+    "canConsumeDataAction": true,
+    "coverLayoutBackground": true
+  },
+  "translatedLocales": [
+    "en",
+    "he"
+  ]
+}
