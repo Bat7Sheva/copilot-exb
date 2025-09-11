@@ -1,0 +1,15 @@
+<div>
+    <div class="openingDiv">בחר מצלמה במפה או חפש:</div>
+    <!-- data-dojo-attach-event="change: searchCamera -->
+    <div class="autocompleteCustom" style="width:300px;">
+        <!-- placeholder="חיפוש חופשי לפי שם מצלמה / איזור או מספר כביש" -->
+        <input type="text" placeholder="חיפוש מצלמה" class="searchInputStyle" id="searchInputValue" data-dojo-attach-event="onkeyup: onKeyUp" />
+        <img src="widgets/CustomIdentify/images/searchempty.png" class="searchIcon">
+    </div>
+
+    <button type="button" class="searchInputButton" data-dojo-attach-event="onclick:submitSearch">חיפוש</button>
+    <div id="cameraWrapper"></div>
+
+</div>
+
+

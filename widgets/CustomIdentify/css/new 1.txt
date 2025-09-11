@@ -1,0 +1,54 @@
+	
+	if (document.querySelector(".dj_rtl .arcgisSearch .searchGroup .searchInput").value == ""){
+		
+         this._hideResultMenu();
+         this._onClearSearch();
+		    html.setStyle(this.searchDijit.suggestionsNode, 'display', 'none');
+        html.removeClass(this.searchDijit.suggestionsNode, 'show');
+      this._resetSelectorPosition('.searchMenu');
+		  		  
+ var searchIcon = document.querySelector(".jimu-rtl .jimu-widget-search.use-absolute .arcgisSearch .searchSubmit");
+		  
+          if (searchIcon != null)  
+		  {
+			  searchIcon.setAttribute("style", 'border-radius:25px 0px 0px 25px !important');
+               searchIcon.classList.remove('after-results');
+		  }
+
+ var searchBar = document.querySelector(".dj_rtl .arcgisSearch .searchGroup .searchInput");
+          
+		  if (searchBar != null) 
+			  searchBar.setAttribute("style", 'border-radius:0px 25px 25px 0px!important');
+
+		 return;
+	}
+	
+	.dot-class{
+	
+    background: url(../images/blueDot.png);
+    width: 20px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-color: transparent !important;
+    background-position: center;
+    background-repeat: no-repeat;
+    transform: translate(0, 10%);
+height: 40px;
+    float: right;
+    padding-right: 50px;
+ 
+}
+
+
+
+		  this.searchDijit.suggestionsNode.querySelectorAll('li').forEach(function (li) {
+			  		  var imgDot = document.createElement("DIV");
+imgDot.setAttribute("class","dot-class");
+			 li.appendChild(imgDot) 
+		  });
+		  
+		  .jimu-widget-search .arcgisSearch .searchMenu li {
+padding: 5px 38px!important;
+    line-height: 50px!important;
+}

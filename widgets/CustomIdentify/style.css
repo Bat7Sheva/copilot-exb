@@ -1,0 +1,277 @@
+.custom-identify h3 {
+  font-size: 1.2em;
+}
+.custom-identify h3, p {
+  margin-top: 0;
+}
+/* add additional custom styles */
+
+html,
+body,
+#map {
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.esriScalebar {
+  padding: 20px 20px;
+}
+
+.searchBtn .searchToggle{ 
+display:none!important;
+}
+.jimu-rtl .jimu-widget-search.use-absolute .arcgisSearch .searchToggle { 
+display:none!important;
+
+}
+
+.esriPopup.myTheme .titlePane,
+.dj_ie7 .esriPopup.myTheme .titlePane .title {
+  background-color: black;
+  color: #f7f7f7;
+  font-weight: bold;
+}
+
+.esriPopup.myTheme .titlePane {
+  border-bottom: 1px solid #96d419;
+  background-color: #f7f7f7;
+  color:black;
+  /* width: 1000px;
+height: 1000px; */
+}
+
+.esriPopup.myTheme .titlePane .titleButton.close{
+
+  
+
+  direction: rtl;
+text-align: left;
+color: black;
+background-color: black;
+left: 8px;
+top: 4px;
+
+filter: invert(100%);
+-webkit-filter: invert(100%);
+
+
+}
+
+.esriPopup.myTheme a {
+  color: #d6e68a;
+}
+.esriPopup.myTheme .pointer.top {
+  background-color: #ffffff;
+}
+.esriPopup.myTheme .outerPointer,
+.esriPopup.myTheme .pointer.bottom {
+  background-color: #424242;
+}
+.esriPopup .titlePane {
+background-color: #ffffff!important;
+color: transparent;
+}
+
+.esriPopup .actionList {
+  display: none!important;
+}
+
+.esriPopup.myTheme .contentPane,
+.esriPopup.myTheme .actionsPane {
+  border-color: 1px solid #121310;
+  background-color: #424242;
+  color: #050404;
+}
+
+.esriPopup .titleButton.close {
+  background-color: black;
+  background-position: 4px 1px;
+width: 19px;
+height: 17px;
+  left: 3px!important;
+}
+.esriPopup .titleButton.maximize {
+  display: none!important;
+}
+
+.detailsDiv {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+.esriPopup .contentPane {
+  font-size: 15px;
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+}
+
+.dj_rtl .arcgisSearch .searchGroup .searchInput {
+    float: right;
+    /* padding: 6px 12px 6px 24px; */
+    border: 1px solid #57585A;
+    height: 41px!important;
+    border-left: 0;
+	font-size: 17px;
+	padding: 5px 32px 6px 18px!important;
+    -webkit-border-radius: 0 4px 4px 0;
+    /* border-radius: 0 4px 4px 0; */
+	    width: auto!important;
+    border: none!important;
+    border-radius: 0px 25px 25px 0px!important;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"!important;
+	/* margin: 0!important; */
+}
+
+.jimu-rtl .jimu-widget-search.use-absolute .arcgisSearch .searchSubmit {
+    /* margin: 4px 43px!important; */
+    float: left;
+    /* padding-right: 6px; */
+    padding: 9px 28px 10px 20px!important;
+    border: 0!important;
+    /* border-radius: 25px!important; */
+    height: 33px!important;
+    -webkit-border-radius: 0 4px 4px 0!important;
+    position: relative!important;
+		    border-radius: 25px 0px 0px 25px!important;
+    margin: 0px!important;
+}
+
+.arcgisSearch .searchIcon {
+    font-size: 21px!important;
+    width: 20px;
+    height: 26px;
+    line-height: 34px!important;
+    display: inline-block;
+}
+.arcgisSearch { 
+    width: 338px!important;
+}
+
+.jimu-widget-search .arcgisSearch .searchMenu
+{
+	font-size: 16px!important;
+    /* display: block; */
+    top: 50px!important;
+    width: 306px!important;
+    border: none!important;
+    border-radius: 0px 0px 25px 25px!important;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"!important;
+}
+
+.jimu-widget-search.use-absolute .arcgisSearch .searchInputGroup .searchClear { 
+	    display: none!important;
+}
+
+.after-results{
+color: #0095da;
+}
+
+
+
+.esriOverviewMap .ovwButton { 
+	    display: none!important;
+
+}
+.jimu-widget-attributetable .jimu-widget-attributetable-move{ 
+	    display: none!important;
+
+}
+.jimu-rtl .esriAttribution{ 
+	    display: none!important;
+
+}
+
+.jimu-appstate-popup .appstate-header { 
+	    display: none!important;
+}
+
+.jimu-rtl .jimu-appstate-popup .appstate-tips {
+		    display: none!important;
+	}
+	
+.jimu-rtl .map .logo-med { 
+	    display: none!important;
+
+}
+.menuHeader { 
+    padding: 3px 50px!important;
+}
+
+.jimu-widget-search .arcgisSearch .searchMenu li {
+padding: 5px 38px!important;
+    line-height: 50px!important;
+}
+.jimu-widget-search .arcgisSearch .searchMenu.suggestionsMenu.show {
+    border-top: 2px solid #dddddd;
+}
+.jimu-widget-zoomslider.vertical .zoom-in { 
+border-bottom: none!important;
+}
+
+
+.jimu-widget-zoomslider{
+left: 7px!important;
+    top: auto!important;
+    right: auto!important;
+    bottom: 7px!important;
+
+ background-color: #fff!important;
+    border: 1px solid #999!important;
+    cursor: pointer;
+	font-size: 40px!important;
+    line-height: 60px!important;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    color: black !important;
+    text-align: center;
+    border-radius: 25px!important;
+    font-family: verdana,helvetica;
+}
+
+.jimu-widget-zoomslider .zoom:hover {
+    background-color: #333!important;
+    border-radius: 25px!important;
+	    color: white !important;
+
+}
+
+.jimu-widget-zoomslider .zoom {
+    width: 55px!important;
+    height: 65px!important;
+}
+
+.map{
+	top: 0px!important;
+}
+
+.jimu-widget-attributetable-switch {
+    display: none!important;
+}
+
+.jimu-widget-header-controller {
+    display: none!important;
+}
+
+.scalebar_bottom-left {
+	    display: none!important;
+}
+
+.searchIcon .esri-icon-loading-indicator .searchSpinner {
+		    display: none!important;
+
+}
+
+/* .searchInput .firstFocusNode { */
+	    /* width: auto!important; */
+    /* border: none!important; */
+    /* border-radius: 0px 25px 25px 0px!important; */
+	
+/* } */
+
+/* .searchBtn .searchSubmit .lastFocusNode{ */
+	    /* border-radius: 25px 0px 0px 25px!important; */
+    /* margin: 0px!important; */
+/* } */

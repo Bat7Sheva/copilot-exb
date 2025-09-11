@@ -1,0 +1,5 @@
+{
+  "cameraLayerUrl": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET3/MapServer/1",
+  "descriptionQuery": "Description like '%{0}%'",
+  "objectIdQuery": "OBJECTID={0}"
+}
