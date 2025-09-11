@@ -27,7 +27,18 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   const [mapWidgetId, setMapWidgetId] = useState<string>();
 
 
+  function loadJWPlayerScript() {
+    if (!document.getElementById('jwplayer-script')) {
+      const script = document.createElement('script');
+      script.id = 'jwplayer-script';
+      script.src = '../jwplayer/jwplayer.js'; // נתיב חדש מקומי
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }
+
   useEffect(() => {
+    loadJWPlayerScript();
     const state = getAppStore().getState();
     const { appConfig, browserSizeMode, appRuntimeInfo } = state;
     const { currentPageId, currentDialogId } = appRuntimeInfo;
