@@ -45,7 +45,7 @@ export const LabelTooltip = (props: LabelTooltipProps) => {
   const { className, label, tooltip = '', icon } = props
 
   return <div className={classNames('label-tooltip d-flex align-items-center justify-content-between', className)}>
-    <div className='text-truncate' title={label}>{label}</div>
+    <div className='text-truncate' title={label}>{label} 111</div>
     <IconTooltip icon={icon} tooltip={tooltip}></IconTooltip>
   </div>
 }

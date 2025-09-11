@@ -39,7 +39,7 @@ export const WidgetAvatarCard = (props: WidgetAvatarCardProps) => {
         showTooltip={showTooltip}
         labelGrowth={labelGrowth}
         avatar={avatar}
-        label={widgetJson.label}
+        label={widgetJson.label + '😊'}
         icon={widgetJson.icon as any}
         autoFlip={widgetJson?.manifest?.properties?.flipIcon}
         marker={markerEnabled ? closeOutlined : ''}

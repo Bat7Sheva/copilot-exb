@@ -2,9 +2,9 @@ import { React, ReactRedux, type IMState, LayoutItemType, ContainerType, getAppS
 import { getListItemLength } from '../common/utils'
 import { type IMConfig } from '../../config'
 import { searchUtils } from 'jimu-layouts/layout-runtime'
-import { MobileWidgetLuncher } from './mobile-widget-luncher'
-import { SingleWidgetsLuncher } from './single-widget-luncher'
-import { MultipleWidgetsLuncher } from './multiple-widgets-luncher'
+// import { MobileWidgetLuncher } from './mobile-widget-luncher'
+// import { SingleWidgetsLuncher } from './single-widget-luncher'
+// import { MultipleWidgetsLuncher } from './multiple-widgets-luncher'
 import { ScrollList } from '../common/scroll-list'
 import { WidgetAvatarCard } from '../common'
 import { BASE_LAYOUT_NAME, DEFAULT_PANEL_SIZE, DEFAULT_PANEL_SPACE, DEFAULT_WIDGET_START_POSITION } from '../../common/consts'
@@ -147,6 +147,7 @@ export const Runtime = (props: RuntimeProps) => {
   const openingWidgets = widgetIds.filter((widgetId) => isWidgetOpening(widgets[widgetId]))
 
   const handleOpenWidget = React.useCallback((evt: React.MouseEvent<HTMLButtonElement>) => {
+    console.log("😊😊😊")
     const widgetId = evt.currentTarget.dataset?.widgetid
     if (!widgetId) return
 
@@ -166,6 +167,8 @@ export const Runtime = (props: RuntimeProps) => {
   }, [mobile, onlyOpenOne, openingWidgets, id])
 
   const handleCloseWidget = (id: string) => {
+    console.log("✨");
+
     if (!id) return
     getAppStore().dispatch(appActions.closeWidget(id))
     const widgetNode = getWidgetCardNode(id)
@@ -213,7 +216,7 @@ export const Runtime = (props: RuntimeProps) => {
 
   return (
     <div className='controller-runtime w-100 h-100'>
-      {
+      {/* {
         mobile && <MobileWidgetLuncher
           containerMapId={containerMapId}
           controllerId={id}
@@ -242,7 +245,7 @@ export const Runtime = (props: RuntimeProps) => {
             onClose={handleCloseWidget}
           />}
         </>
-      }
+      } */}
       <ScrollList
         ref={rootRef}
         className={'runtime--scroll-list'}

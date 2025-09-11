@@ -156,14 +156,14 @@ const ControllerWidget = (props: ControllerWidgetProps) => {
             autoSize={autoSize}
           ></Runtime>
         )}
-        {isBuilder && Builder && (
+        {/* {isBuilder && Builder && (
           <Builder
             id={id}
             version={version}
             config={config}
             autoSize={autoSize}
           ></Builder>
-        )}
+        )} */}
       </div>
     </div>
   )
