@@ -1,0 +1,27 @@
+{
+  "name": "free-drawing",
+  "label": "Draw",
+  "type": "widget",
+  "version": "1.14.0",
+  "exbVersion": "1.14.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "This is the widget used in developer guide",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "publishMessages": [],
+  "messageActions": [],
+  "defaultSize": {
+    "width": 440,
+    "height": 446,
+    "autoWidth": true,
+    "autoHeight": true
+  },
+  "properties": {
+    "coverLayoutBackground": true
+  },
+  "translatedLocales": [
+    "en",
+    "he"
+  ],
+  "dependency": "jimu-arcgis"
+}
