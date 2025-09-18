@@ -331,9 +331,34 @@ State
     }
   }
 
-  componentDidMount() {
+  async createDataSourceFromUrl(layerUrl: string, options?: { layerName?: string }) {
+    if (!this.FeatureLayer) {
+      await loadArcGISJSAPIModules(['esri/layers/FeatureLayer']).then(modules => {
+        ;[this.FeatureLayer] = modules
+      })
+    }
+    const featureLayer = new this.FeatureLayer({ url: layerUrl });
+    await featureLayer.load();
+
+    const dsId = `custom-url-ds-${Date.now()}`;
+    const dsJson = Immutable({
+      id: dsId,
+      type: DataSourceTypes.FeatureLayer,
+      url: layerUrl,
+      label: options?.layerName || featureLayer.title || layerUrl
+    });
+    const dsOption = {
+      id: dsId,
+      dataSourceJson: dsJson,
+      layer: featureLayer
+    };
+    const dataSource = await this.dsManager.createDataSource(dsOption);
+    return dataSource;
+  }
+
+  async componentDidMount() {
     if (!this.state.apiLoaded) {
-      loadArcGISJSAPIModules([
+      await loadArcGISJSAPIModules([
         'esri/widgets/FeatureTable',
         'esri/layers/FeatureLayer',
         'esri/widgets/FeatureTable/support/TableTemplate',
@@ -344,28 +369,23 @@ State
         this.setState({
           apiLoaded: true
         })
-        this.destoryTable().then(() => {
-          this.createTable()
-        })
       })
     }
-      this.initializeCurrentMapWidget()
+    this.initializeCurrentMapWidget();
+
+    // טעינה אוטומטית מה-URL שלך
+    const layerUrl = this.customLayerUrl;
+    const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: 'GEONET' });
+    await this.destoryTable();
+    this.createTable(dataSource);
   }
 
-  componentWillUnmount () {
-    const { id } = this.props
-    this.promises.forEach(p => { p.cancel() })
-    this.destoryTable()
-    clearTimeout(this.suggestionsQueryTimeout)
-    clearInterval(this.autoRefreshLoadingTime)
-    MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
-  }
-
-  componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
-    const { activeTabId, dataSource, tableLoaded } = this.state
-    const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
+  static getDerivedStateFromProps (nextProps, prevState) {
+    const { config } = nextProps
     const { layersConfig } = config
-    const daLayersConfig = this.getDataActionTable()
+    const { activeTabId } = prevState
+    // get data-action table config
+    const daLayersConfig = new Widget(nextProps).getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const dataActionActiveObj = this.props?.stateProps?.dataActionActiveObj
     const newActiveTabId = dataActionActiveObj?.dataActionTable ? dataActionActiveObj?.activeTabId : activeTabId
@@ -1308,7 +1328,7 @@ State
         this.resetUpdatingStatus()
       }))
       // cancel previous promise
-      if (this.promises.length !== 0) {
+      if this.promises.length !== 0) {
         this.promises.forEach(p => { p.cancel() })
       }
       this.promises.push(tablePromise)
