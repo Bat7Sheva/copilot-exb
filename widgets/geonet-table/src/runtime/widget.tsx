@@ -1345,11 +1345,21 @@ State
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const curLayerConfig = allLayersConfig.find(item => item.id === activeTabId)
+
+    // שינוי: אפשר להמשיך אם newDataSource קיים ואין curLayerConfig
+    if (!curLayerConfig && newDataSource) {
+      // יצירת טבלה ל-DataSource חיצוני (למשל מ-URL)
+      this.getLayerAndNewTable(dataSource, {}, undefined)
+      this.deferAttachFilters()
+      return
+    }
+
     if (!curLayerConfig) {
       this.dataActionCanLoad = true
       this.updatingTable = false
       return
     }
+
     // add data widget data action
     const { dataActionDataSource } = curLayerConfig
     if (dataActionDataSource) {
@@ -1372,17 +1382,12 @@ State
         this.setState({ emptyTable: false })
       }
     }
-    // Determine whether the ds has change to curLayer's ds
+    // שינוי: אפשר להמשיך אם newDataSource קיים
     const curDsId = dataActionDataSource ? dataActionDataSource?.id : curLayerConfig?.useDataSource?.dataSourceId
     const isCurDs = curLayerConfig.dataActionType === TableDataActionType.View || curDsId === dataSource?.id
-    if (!isCurDs) {
+    if (!isCurDs && !newDataSource) {
       this.dataActionCanLoad = true
       this.updatingTable = false
-      return
-    }
-    // Check whether ds is available
-    if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
-      this.resetUpdatingStatus(true)
       return
     }
     const dataRecords = this.dataActionTableRecords[curLayerConfig.id]
