@@ -2522,43 +2522,43 @@ State
     // If 'view in table', use selection view
     const useLayerDs = curLayer.dataActionObject && curLayer.dataActionType === TableDataActionType.View
 
+    // מציאת שם השכבה וה-URL
+    let layerName = '';
+    let layerUrl = '';
+    if (dataSource) {
+      layerName = dataSource.getLabel?.() || dataSource?.dataSourceJson?.label || '';
+      layerUrl = dataSource?.dataSourceJson?.url || dataSource?.url || '';
+    }
+
     return (
       <div className={classes} css={getStyle(theme, mobileFlag, searchOn, partProps)} ref={el => (this.refs.currentEl = el)}>
         <div className='surface-1 border-0 h-100'>
           <div className='table-indent'>
+            {/* הצגת שם השכבה וה-URL מעל הטאבים/דרופדאון */}
+            <div className="layer-info mb-2" style={{ direction: 'ltr', fontSize: '14px', color: '#444' }}>
+              <strong>Layer:</strong> {layerName}
+              {layerUrl && (
+                <span style={{ marginLeft: '16px', fontSize: '12px', color: '#888' }}>
+                  <strong>URL:</strong> <span style={{ wordBreak: 'break-all' }}>{layerUrl}</span>
+                </span>
+              )}
+            </div>
+            {/* ...existing code for tabs/dropdown... */}
             <div
               className={`d-flex ${
                 horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
               }`}
             >
-              {/* someting wrong in lint check for Tabs */}
-              {horizontalTag
-                ? (
-                  <Fragment>
-                    <Tabs type='underline' onChange={this.onTagClick} className='tab-flex' value={activeTabId} onClose={this.onCloseTab} scrollable>
-                      {
-                        allLayersConfig.map(item => {
-                          const isDataAction = !!item.dataActionObject
-                          return (
-                            <Tab
-                              key={item.id}
-                              id={item.id}
-                              title={item.name}
-                              className='text-truncate tag-size'
-                              closeable={isDataAction}
-                            >
-                              <div className='mt-2' />
-                            </Tab>
-                          )
-                        }) as any
-                      }
-                    </Tabs>
-                  </Fragment>
-                  )
-                : (
-                  <Select
-                    size='sm'
-                    value={activeTabId}
+              {/* ...existing code... */}
+            </div>
+            {/* ...existing code... */}
+          </div>
+        </div>
+        {/* ...existing code... */}
+      </div>
+    )
+  }
+}
                     onChange={this.handleTagChange}
                     className='top-drop'
                   >
