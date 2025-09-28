@@ -100,6 +100,7 @@ import { InfoOutlined } from 'jimu-icons/outlined/suggested/info'
 import FilterPopup from "./components/filter-popup";
 import ReactDOM from "react-dom/client";
 import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
+import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
 
 
 // import warningIcon from 'jimu-icons/svg/outlined/suggested/warning.svg'
@@ -127,6 +128,8 @@ export interface Props {
   isWidthAuto: boolean
   isHeightAuto: boolean
   [propName: string]: any
+  layerList: GeonetLayerEntry[]
+	selectedLayerUrl?: string | null
 }
 
 export interface State {
@@ -176,6 +179,7 @@ State
   mapExtentFiltered: boolean = false;
   mapExtentFilterQuery: string = '';
   originalDefinitionExpression: string = '';
+  customLayerUrl: string = 'https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/0';
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -240,6 +244,8 @@ State
       const dataActionDataSourceInfo = updatedViewInTableObj[key]?.daLayerItem?.dataActionDataSource?.getInfo()
       runtimeDataSourceInfos[`${runtimeDataSourceKey}_${dataActionDataSourceId}`] = dataActionDataSourceInfo
     }
+    const layerList = state?.geonetLayerState?.layerList?.length > 0 ? Immutable.asMutable(state?.geonetLayerState?.layerList, { deep: true }) : [];
+    const selectedLayer = state?.geonetLayerState?.selectedLayerUrl;
     return {
       appMode: state?.appRuntimeInfo?.appMode,
       isRTL: state?.appContext?.isRTL,
@@ -249,7 +255,9 @@ State
       enableDataAction: enableDataAction === undefined ? true : enableDataAction,
       ...runtimeDataSourceInfos,
       isHeightAuto,
-      isWidthAuto
+      isWidthAuto,
+      layerList: layerList,
+      selectedLayerUrl: selectedLayer
     }
   }
 
@@ -369,23 +377,38 @@ State
         this.setState({
           apiLoaded: true
         })
+        this.destoryTable().then(() => {
+          this.createTable()
+        })
       })
     }
-    this.initializeCurrentMapWidget();
-
-    // טעינה אוטומטית מה-URL שלך
-    const layerUrl = this.customLayerUrl;
-    const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: 'GEONET' });
-    await this.destoryTable();
-    this.createTable(dataSource);
+      this.initializeCurrentMapWidget()
+          // // טעינה אוטומטית מה-URL שלך
+    // const layerUrl = this.customLayerUrl;
+    // const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: 'GEONET' });
+    // await this.destoryTable();
+    // this.createTable(dataSource);
+    // this.createTable();
   }
 
-  static getDerivedStateFromProps (nextProps, prevState) {
-    const { config } = nextProps
+  componentWillUnmount () {
+    const { id } = this.props
+    this.promises.forEach(p => { p.cancel() })
+    this.destoryTable()
+    clearTimeout(this.suggestionsQueryTimeout)
+    clearInterval(this.autoRefreshLoadingTime)
+    MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
+  }
+
+  componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
+    const { activeTabId, dataSource, tableLoaded } = this.state
+    const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
-    const { activeTabId } = prevState
+    // const { activeTabId } = prevState
     // get data-action table config
-    const daLayersConfig = new Widget(nextProps).getDataActionTable()
+    const daLayersConfig = this.getDataActionTable()
+    // const daLayersConfig = new Widget(nextProps).getDataActionTable()
+
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const dataActionActiveObj = this.props?.stateProps?.dataActionActiveObj
     const newActiveTabId = dataActionActiveObj?.dataActionTable ? dataActionActiveObj?.activeTabId : activeTabId
@@ -1328,7 +1351,7 @@ State
         this.resetUpdatingStatus()
       }))
       // cancel previous promise
-      if this.promises.length !== 0) {
+      if (this.promises.length !== 0) {
         this.promises.forEach(p => { p.cancel() })
       }
       this.promises.push(tablePromise)
@@ -1345,6 +1368,17 @@ State
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const curLayerConfig = allLayersConfig.find(item => item.id === activeTabId)
+    
+    // // geonet start
+    // // שינוי: אפשר להמשיך אם newDataSource קיים ואין curLayerConfig
+    // if (!curLayerConfig && newDataSource) {
+    //   // יצירת טבלה ל-DataSource חיצוני (למשל מ-URL)
+    //   this.getLayerAndNewTable(dataSource, {}, undefined)
+    //   this.deferAttachFilters()
+    //   return
+    // }
+    // // geonet end
+
     if (!curLayerConfig) {
       this.dataActionCanLoad = true
       this.updatingTable = false
@@ -1376,11 +1410,20 @@ State
     const curDsId = dataActionDataSource ? dataActionDataSource?.id : curLayerConfig?.useDataSource?.dataSourceId
     const isCurDs = curLayerConfig.dataActionType === TableDataActionType.View || curDsId === dataSource?.id
     if (!isCurDs) {
+    // if (!isCurDs && !newDataSource) { // geonet
       this.dataActionCanLoad = true
       this.updatingTable = false
       return
     }
-    // Check whether ds is available
+    // geonet start
+    // // Check whether ds is available
+    // if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
+     //   this.resetUpdatingStatus(true)
+     //   return
+    // }
+    // geonet start
+
+        // Check whether ds is available
     if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
       this.resetUpdatingStatus(true)
       return
@@ -1513,6 +1556,23 @@ State
 
   buildColumnFilters = () => {
     const vaadinGrid = document.querySelector("vaadin-grid");
+
+    // vaadinGrid.addEventListener("click", (event: MouseEvent) => {
+
+    //   setTimeout(() => {
+    //     const selectedItems = (vaadinGrid as any).selectedItems;
+    //     console.log(selectedItems);
+
+    //     if(selectedItems.length){
+
+    //       const selectedItemsArr = selectedItems.map(x=> x.objectId);
+    //       const query = `objectId in (${selectedItemsArr.join(", ")})`
+
+    //       this.filterMap(query, true);
+    //     }
+
+    //   }, 300);
+    // });
 
     vaadinGrid.addEventListener("dblclick", (event: MouseEvent) => {
 
@@ -1648,47 +1708,47 @@ State
     }
   }
 
-  onToggleMapExtentFilter = async () => {
-    const mapView = this.currentJimuMapView?.view;
-    const table = this.table;
-    if (!mapView || !table || !table.layer) return;
+  // onToggleMapExtentFilter = async () => {
+  //   const mapView = this.currentJimuMapView?.view;
+  //   const table = this.table;
+  //   if (!mapView || !table || !table.layer) return;
  
-    if (!this.mapExtentFiltered) {
-      // שמור את הביטוי המקורי
-      this.originalDefinitionExpression = table.layer.definitionExpression || '';
-      // קבל את התיחום הנוכחי של המפה
-      const extent = mapView.extent;
-      if (!extent) return;
-      // צור ביטוי מרחבי
-      const spatialQuery = `INTERSECTS(SHAPE, Envelope(${extent.xmin}, ${extent.ymin}, ${extent.xmax}, ${extent.ymax}))`;
-      const content ={
-        'Input Geometry': {
-          "xmin": extent.xmin
-          ,"ymin": extent.ymin
-          ,"xmax": extent.xmax
-          ,"ymax": extent.ymax
-          ,"spatialReference": {"wkid":2039 ,"latestWkid":2039}
-        },
-        'f': 'json',
-        'Return Geometry': false
-      }
+  //   if (!this.mapExtentFiltered) {
+  //     // שמור את הביטוי המקורי
+  //     this.originalDefinitionExpression = table.layer.definitionExpression || '';
+  //     // קבל את התיחום הנוכחי של המפה
+  //     const extent = mapView.extent;
+  //     if (!extent) return;
+  //     // צור ביטוי מרחבי
+  //     const spatialQuery = `INTERSECTS(SHAPE, Envelope(${extent.xmin}, ${extent.ymin}, ${extent.xmax}, ${extent.ymax}))`;
+  //     const content ={
+  //       'Input Geometry': {
+  //         "xmin": extent.xmin
+  //         ,"ymin": extent.ymin
+  //         ,"xmax": extent.xmax
+  //         ,"ymax": extent.ymax
+  //         ,"spatialReference": {"wkid":2039 ,"latestWkid":2039}
+  //       },
+  //       'f': 'json',
+  //       'Return Geometry': false
+  //     }
 
-          // const result = await postRequestService(content, baseUrl);
+  //         // const result = await postRequestService(content, baseUrl);
       
 
-      this.mapExtentFilterQuery = spatialQuery;
-      table.layer.definitionExpression = spatialQuery;
-      await this.filterMap(spatialQuery);
-      this.mapExtentFiltered = true;
-    } else {
-      // החזר את הביטוי המקורי
-      table.layer.definitionExpression = this.originalDefinitionExpression;
-      await this.filterMap(this.originalDefinitionExpression);
-      this.mapExtentFiltered = false;
-    }
-    // עדכן את הכותרת של הכפתור
-    this.forceUpdate();
-  }
+  //     this.mapExtentFilterQuery = spatialQuery;
+  //     table.layer.definitionExpression = spatialQuery;
+  //     await this.filterMap(spatialQuery);
+  //     this.mapExtentFiltered = true;
+  //   } else {
+  //     // החזר את הביטוי המקורי
+  //     table.layer.definitionExpression = this.originalDefinitionExpression;
+  //     await this.filterMap(this.originalDefinitionExpression);
+  //     this.mapExtentFiltered = false;
+  //   }
+  //   // עדכן את הכותרת של הכפתור
+  //   this.forceUpdate();
+  // }
 
   onCleanFilter = async () => {
     this.resetTableExpression();
@@ -2219,7 +2279,7 @@ State
     return <div className='top-button-list'>
 
       {/* geonet - filter by map extent */}
-      <div className='top-button ml-2'>
+      {/* <div className='top-button ml-2'>
         <Button
           size='sm'
           onClick={this.onToggleMapExtentFilter}
@@ -2228,7 +2288,7 @@ State
           disabled={!tableLoaded || emptyTable } >
           <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
         </Button>
-      </div>
+      </div> */}
 
       {/* geonet - clearFilter */}
       <div className='top-button ml-2'>
