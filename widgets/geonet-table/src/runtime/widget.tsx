@@ -100,6 +100,7 @@ import { InfoOutlined } from 'jimu-icons/outlined/suggested/info'
 import FilterPopup from "./components/filter-popup";
 import ReactDOM from "react-dom/client";
 import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
+import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
 
 
 // import warningIcon from 'jimu-icons/svg/outlined/suggested/warning.svg'
@@ -127,6 +128,8 @@ export interface Props {
   isWidthAuto: boolean
   isHeightAuto: boolean
   [propName: string]: any
+  layerList: GeonetLayerEntry[]
+	selectedLayerUrl?: string | null
 }
 
 export interface State {
@@ -165,8 +168,8 @@ export interface tableSelectedItem {
 }
 
 export default class Widget extends React.PureComponent<
-  AllWidgetProps<IMConfig> & Props,
-  State
+AllWidgetProps<IMConfig> & Props,
+State
 > {
   static versionManager = versionManager
   table: __esri.FeatureTable
@@ -241,6 +244,8 @@ export default class Widget extends React.PureComponent<
       const dataActionDataSourceInfo = updatedViewInTableObj[key]?.daLayerItem?.dataActionDataSource?.getInfo()
       runtimeDataSourceInfos[`${runtimeDataSourceKey}_${dataActionDataSourceId}`] = dataActionDataSourceInfo
     }
+    const layerList = state?.geonetLayerState?.layerList?.length > 0 ? Immutable.asMutable(state?.geonetLayerState?.layerList, { deep: true }) : [];
+    const selectedLayer = state?.geonetLayerState?.selectedLayerUrl;
     return {
       appMode: state?.appRuntimeInfo?.appMode,
       isRTL: state?.appContext?.isRTL,
@@ -250,11 +255,13 @@ export default class Widget extends React.PureComponent<
       enableDataAction: enableDataAction === undefined ? true : enableDataAction,
       ...runtimeDataSourceInfos,
       isHeightAuto,
-      isWidthAuto
+      isWidthAuto,
+      layerList: layerList,
+      selectedLayerUrl: selectedLayer
     }
   }
 
-  constructor(props) {
+  constructor (props) {
     super(props)
 
     this.state = {
@@ -303,7 +310,7 @@ export default class Widget extends React.PureComponent<
     this.dsManager = DataSourceManager.getInstance()
   }
 
-  static getDerivedStateFromProps(nextProps, prevState) {
+  static getDerivedStateFromProps (nextProps, prevState) {
     const { config } = nextProps
     const { layersConfig } = config
     const { activeTabId } = prevState
@@ -370,23 +377,38 @@ export default class Widget extends React.PureComponent<
         this.setState({
           apiLoaded: true
         })
+        this.destoryTable().then(() => {
+          this.createTable()
+        })
       })
     }
-    this.initializeCurrentMapWidget();
-
-    // טעינה אוטומטית מה-URL שלך
-    const layerUrl = this.customLayerUrl;
-    const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: this.customLayerName });
-    await this.destoryTable();
-    this.createTable(dataSource);
+      this.initializeCurrentMapWidget()
+          // // טעינה אוטומטית מה-URL שלך
+    // const layerUrl = this.customLayerUrl;
+    // const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: 'GEONET' });
+    // await this.destoryTable();
+    // this.createTable(dataSource);
+    // this.createTable();
   }
 
-  getDerivedStateFromProps(nextProps, prevState) {
-    const { config } = nextProps
+  componentWillUnmount () {
+    const { id } = this.props
+    this.promises.forEach(p => { p.cancel() })
+    this.destoryTable()
+    clearTimeout(this.suggestionsQueryTimeout)
+    clearInterval(this.autoRefreshLoadingTime)
+    MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
+  }
+
+  componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
+    const { activeTabId, dataSource, tableLoaded } = this.state
+    const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
-    const { activeTabId } = prevState
+    // const { activeTabId } = prevState
     // get data-action table config
-    const daLayersConfig = new Widget(nextProps).getDataActionTable()
+    const daLayersConfig = this.getDataActionTable()
+    // const daLayersConfig = new Widget(nextProps).getDataActionTable()
+
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const dataActionActiveObj = this.props?.stateProps?.dataActionActiveObj
     const newActiveTabId = dataActionActiveObj?.dataActionTable ? dataActionActiveObj?.activeTabId : activeTabId
@@ -619,7 +641,7 @@ export default class Widget extends React.PureComponent<
 
   onActiveViewChange = (jimuMapView: JimuMapView) => {
     if (jimuMapView) {
-      this.currentJimuMapView = jimuMapView;
+      this.currentJimuMapView = jimuMapView;      
     }
   };
 
@@ -974,14 +996,14 @@ export default class Widget extends React.PureComponent<
     const selectedQuery =
       selectedItems && selectedItems.length > 0
         ? `${objectIdField} IN (${selectedItems
-          .map(item => {
-            if (item.dataSource) {
-              return item.getId()
-            } else {
-              return item
-            }
-          })
-          .join()})`
+            .map(item => {
+              if (item.dataSource) {
+                return item.getId()
+              } else {
+                return item
+              }
+            })
+            .join()})`
         : ''
     if (versionChangeClear) dataSource.clearSelection()
     const syncSqlResult = (records) => {
@@ -1336,89 +1358,85 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  // createTable = (newDataSource?) => {
-  //   const { config } = this.props
-  //   const { layersConfig } = config
-  //   const { activeTabId } = this.state
-  //   let { dataSource } = this.state
-  //   if (newDataSource) dataSource = newDataSource
-  //   // add data-action table config to all configs
-  //   const daLayersConfig = this.getDataActionTable()
-  //   const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
-  //   const curLayerConfig = allLayersConfig.find(item => item.id === activeTabId)
-
-  //   // geonet start
-  //   // שינוי: אפשר להמשיך אם newDataSource קיים ואין curLayerConfig
-  //   if (!curLayerConfig && newDataSource) {
-  //     // יצירת טבלה ל-DataSource חיצוני (למשל מ-URL)
-  //     this.getLayerAndNewTable(dataSource, {}, undefined)
-  //     this.deferAttachFilters()
-  //     return
-  //   }
-  //   // geonet end
-
-  //   if (!curLayerConfig) {
-  //     this.dataActionCanLoad = true
-  //     this.updatingTable = false
-  //     return
-  //   }
-  //   // add data widget data action
-  //   const { dataActionDataSource } = curLayerConfig
-  //   if (dataActionDataSource) {
-  //     dataSource = dataActionDataSource as QueriableDataSource
-  //   }
-  //   if (!dataSource || notLoad.includes(dataSource?.getInfo()?.status)) {
-  //     this.dataActionCanLoad = true
-  //     this.updatingTable = false
-  //     return
-  //   }
-  //   // ds judgment
-  //   const dataActionObject = curLayerConfig.dataActionObject
-  //   if (dataSource?.dataViewId === SELECTION_DATA_VIEW_ID) {
-  //     if (!dataSource?.getDataSourceJson()?.isDataInDataSourceInstance ||
-  //       (!dataActionObject && dataSource?.getSourceRecords().length === 0)
-  //     ) {
-  //       this.resetUpdatingStatus(true)
-  //       return
-  //     } else {
-  //       this.setState({ emptyTable: false })
-  //     }
-  //   }
-  //   // Determine whether the ds has change to curLayer's ds
-  //   const curDsId = dataActionDataSource ? dataActionDataSource?.id : curLayerConfig?.useDataSource?.dataSourceId
-  //   const isCurDs = curLayerConfig.dataActionType === TableDataActionType.View || curDsId === dataSource?.id
-  //   // if (!isCurDs) {
-  //   if (!isCurDs && !newDataSource) { // geonet
-  //     this.dataActionCanLoad = true
-  //     this.updatingTable = false
-  //     return
-  //   }
-  //   // geonet start
-  //   // // Check whether ds is available
-  //   // if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
-  //    //   this.resetUpdatingStatus(true)
-  //    //   return
-  //   // }
-  //   // geonet start
-
-  //   const dataRecords = this.dataActionTableRecords[curLayerConfig.id]
-  //   if (dataActionObject) {
-  //     if (curDsId) {
-  //       dataSource = this.dsManager.getDataSource(curDsId) as QueriableDataSource
-  //     }
-  //   }
-  //   this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
-
-  //   // add filtration charging after creating a table
-  //   this.deferAttachFilters()
-  // }
-
   createTable = (newDataSource?) => {
+    const { config } = this.props
+    const { layersConfig } = config
+    const { activeTabId } = this.state
     let { dataSource } = this.state
     if (newDataSource) dataSource = newDataSource
+    // add data-action table config to all configs
+    const daLayersConfig = this.getDataActionTable()
+    const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
+    const curLayerConfig = allLayersConfig.find(item => item.id === activeTabId)
+    
+    // // geonet start
+    // // שינוי: אפשר להמשיך אם newDataSource קיים ואין curLayerConfig
+    // if (!curLayerConfig && newDataSource) {
+    //   // יצירת טבלה ל-DataSource חיצוני (למשל מ-URL)
+    //   this.getLayerAndNewTable(dataSource, {}, undefined)
+    //   this.deferAttachFilters()
+    //   return
+    // }
+    // // geonet end
 
-    // יצירת טבלה ל-DataSource חיצוני בלבד, ללא קונפיג
-    this.getLayerAndNewTable(dataSource, ({} as any), undefined)
+    if (!curLayerConfig) {
+      this.dataActionCanLoad = true
+      this.updatingTable = false
+      return
+    }
+    // add data widget data action
+    const { dataActionDataSource } = curLayerConfig
+    if (dataActionDataSource) {
+      dataSource = dataActionDataSource as QueriableDataSource
+    }
+    if (!dataSource || notLoad.includes(dataSource?.getInfo()?.status)) {
+      this.dataActionCanLoad = true
+      this.updatingTable = false
+      return
+    }
+    // ds judgment
+    const dataActionObject = curLayerConfig.dataActionObject
+    if (dataSource?.dataViewId === SELECTION_DATA_VIEW_ID) {
+      if (!dataSource?.getDataSourceJson()?.isDataInDataSourceInstance ||
+        (!dataActionObject && dataSource?.getSourceRecords().length === 0)
+      ) {
+        this.resetUpdatingStatus(true)
+        return
+      } else {
+        this.setState({ emptyTable: false })
+      }
+    }
+    // Determine whether the ds has change to curLayer's ds
+    const curDsId = dataActionDataSource ? dataActionDataSource?.id : curLayerConfig?.useDataSource?.dataSourceId
+    const isCurDs = curLayerConfig.dataActionType === TableDataActionType.View || curDsId === dataSource?.id
+    if (!isCurDs) {
+    // if (!isCurDs && !newDataSource) { // geonet
+      this.dataActionCanLoad = true
+      this.updatingTable = false
+      return
+    }
+    // geonet start
+    // // Check whether ds is available
+    // if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
+     //   this.resetUpdatingStatus(true)
+     //   return
+    // }
+    // geonet start
+
+        // Check whether ds is available
+    if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
+      this.resetUpdatingStatus(true)
+      return
+    }
+    const dataRecords = this.dataActionTableRecords[curLayerConfig.id]
+    if (dataActionObject) {
+      if (curDsId) {
+        dataSource = this.dsManager.getDataSource(curDsId) as QueriableDataSource
+      }
+    }
+    this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
+    
+    // add filtration charging after creating a table
     this.deferAttachFilters()
   }
 
@@ -1444,7 +1462,7 @@ export default class Widget extends React.PureComponent<
     }
   }
 
-  async destoryTable() {
+  async destoryTable () {
     if (this.table) {
       (this.table as any).menu.open = false
       !this.table.destroyed && this.table.destroy()
@@ -1493,7 +1511,7 @@ export default class Widget extends React.PureComponent<
     const root = this.refs.tableContainer || document
     return root.querySelector('vaadin-grid')
   }
-
+  
   deferAttachFilters() {
     const tryAttach = (attempt = 0) => {
       const grid = this.getMyGrid()
@@ -1538,6 +1556,23 @@ export default class Widget extends React.PureComponent<
 
   buildColumnFilters = () => {
     const vaadinGrid = document.querySelector("vaadin-grid");
+
+    // vaadinGrid.addEventListener("click", (event: MouseEvent) => {
+
+    //   setTimeout(() => {
+    //     const selectedItems = (vaadinGrid as any).selectedItems;
+    //     console.log(selectedItems);
+
+    //     if(selectedItems.length){
+
+    //       const selectedItemsArr = selectedItems.map(x=> x.objectId);
+    //       const query = `objectId in (${selectedItemsArr.join(", ")})`
+
+    //       this.filterMap(query, true);
+    //     }
+
+    //   }, 300);
+    // });
 
     vaadinGrid.addEventListener("dblclick", (event: MouseEvent) => {
 
@@ -1677,7 +1712,7 @@ export default class Widget extends React.PureComponent<
   //   const mapView = this.currentJimuMapView?.view;
   //   const table = this.table;
   //   if (!mapView || !table || !table.layer) return;
-
+ 
   //   if (!this.mapExtentFiltered) {
   //     // שמור את הביטוי המקורי
   //     this.originalDefinitionExpression = table.layer.definitionExpression || '';
@@ -1699,7 +1734,7 @@ export default class Widget extends React.PureComponent<
   //     }
 
   //         // const result = await postRequestService(content, baseUrl);
-
+      
 
   //     this.mapExtentFilterQuery = spatialQuery;
   //     table.layer.definitionExpression = spatialQuery;
@@ -1717,7 +1752,7 @@ export default class Widget extends React.PureComponent<
 
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+    this.filtersState =  {} as Record<string, { name: string; value: any; query: string }>;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -1760,11 +1795,11 @@ export default class Widget extends React.PureComponent<
 
         (featureDS as QueriableDataSource)?.updateQueryParams(queryParams, this.mapWidgetId);
       } else {
-        const result = await queryService(layerUrl, query, [], true, false);
-        if (result?.features?.length > 0) {
-          await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
-          await drawGraghicOnMap(result.features[0].geometry, mapView);
-        }
+          const result = await queryService(layerUrl, query, [], true, false);
+          if (result?.features?.length > 0) {
+            await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
+            await drawGraghicOnMap(result.features[0].geometry, mapView);
+          }
       }
     } catch (error) {
       console.log('error', error);
@@ -1975,7 +2010,7 @@ export default class Widget extends React.PureComponent<
                 </div>
               </Popper>
             </div>
-          )
+            )
           : (
             <div className='d-flex align-items-center table-search'>
               <TextInput
@@ -1989,7 +2024,7 @@ export default class Widget extends React.PureComponent<
                 title={hint || this.formatMessage('search')}
               />
             </div>
-          )}
+            )}
       </div>
     )
   }
@@ -2137,7 +2172,7 @@ export default class Widget extends React.PureComponent<
             {bottomResponsiveFlag
               ? <Tooltip title={autoRefreshLoadingString} showArrow placement='top-end'>
                 <Button icon size='sm' type='tertiary' className='d-inline jimu-outline-inside border-0 p-0'>
-                  <InfoOutlined size={14} />
+                  <InfoOutlined size={14}/>
                 </Button>
               </Tooltip>
               : autoRefreshLoadingString
@@ -2182,7 +2217,7 @@ export default class Widget extends React.PureComponent<
 
   customShowHideDropdownButton = () => {
     return <Fragment>
-      <ListVisibleOutlined className='mr-1' />
+      <ListVisibleOutlined className='mr-1'/>
       {this.formatMessage('showHideCols')}
     </Fragment>
   }
@@ -2265,8 +2300,8 @@ export default class Widget extends React.PureComponent<
           disabled={!tableLoaded || emptyTable || !hasFilterTable}
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-button' : ''}
         >
-          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter"
-            className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''} />
+          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter" 
+          className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
         </Button>
       </div>
 
@@ -2283,7 +2318,7 @@ export default class Widget extends React.PureComponent<
             }
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
-            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip />}
+            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip/>}
           </Button>
         </div>
       )}
@@ -2420,27 +2455,27 @@ export default class Widget extends React.PureComponent<
           {curLayer.enableSelect &&
             <Fragment>
               <DropdownItem key='showSelection' onClick={this.onShowSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                {selectQueryFlag ? <MenuOutlined className='mr-1' /> : <ShowSelectionOutlined className='mr-1' autoFlip />}
+                {selectQueryFlag ? <MenuOutlined className='mr-1'/> : <ShowSelectionOutlined className='mr-1' autoFlip/>}
                 {selectQueryFlag
                   ? this.formatMessage('showAll')
                   : this.formatMessage('showSelection')
                 }
               </DropdownItem>
               <DropdownItem key='clearSelection' onClick={this.onSelectionClear} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                <ClearSelectionGeneralOutlined className='mr-1' />
+                <ClearSelectionGeneralOutlined className='mr-1'/>
                 {this.formatMessage('clearSelection')}
               </DropdownItem>
             </Fragment>
           }
           {curLayer.enableRefresh &&
             <DropdownItem key='refresh' onClick={this.onTableRefresh} disabled={!tableLoaded || emptyTable}>
-              <RefreshOutlined className='mr-1' />
+              <RefreshOutlined className='mr-1'/>
               {this.formatMessage('refresh')}
             </DropdownItem>
           }
           {curLayer.enableEdit && !notAllowDel && false &&
             <DropdownItem key='delete' onClick={this.onDeleteSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-              <TrashOutlined className='mr-1' />
+              <TrashOutlined className='mr-1'/>
               {this.formatMessage('delete')}
             </DropdownItem>
           }
@@ -2483,239 +2518,9 @@ export default class Widget extends React.PureComponent<
           }
         </Fragment>
       }
-    </div>
+     </div>
   }
 
-  // render() {
-  //   const {
-  //     activeTabId,
-  //     mobileFlag,
-  //     emptyTable,
-  //     notReady,
-  //     showLoading,
-  //     interval,
-  //     isShowSuggestion,
-  //     searchSuggestion,
-  //     tableTotal,
-  //     tableSelected
-  //   } = this.state
-  //   let { dataSource } = this.state
-  //   const { config, id, theme, enableDataAction, isHeightAuto, isWidthAuto } = this.props
-  //   const { layersConfig, arrangeType } = config
-  //   // data-action Table
-  //   const daLayersConfig = this.getDataActionTable()
-  //   const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
-  //   let useDataSource
-  //   const curLayer = allLayersConfig.find(item => item.id === activeTabId)
-  //   if (curLayer?.dataActionDataSource) dataSource = curLayer.dataActionDataSource as QueriableDataSource
-  //   if (allLayersConfig.length > 0) {
-  //     useDataSource = curLayer
-  //       ? curLayer.useDataSource
-  //       : allLayersConfig[0].useDataSource
-  //   }
-  //   const classes = classNames(
-  //     'jimu-widget',
-  //     'widget-table',
-  //     'table-widget-' + id
-  //   )
-
-  //   if (allLayersConfig.length === 0) {
-  //     return (
-  //       <WidgetPlaceholder
-  //         widgetId={id}
-  //         iconSize='large'
-  //         style={{ position: 'absolute', left: 0, top: 0 }}
-  //         icon={tablePlaceholderIcon}
-  //         data-testid='tablePlaceholder'
-  //       />
-  //     )
-  //   }
-
-  //   const horizontalTag = arrangeType === TableArrangeType.Tabs
-  //   const dataSourceLabel = dataSource?.getLabel()
-  //   const outputDsWidgetId = appConfigUtils.getWidgetIdByOutputDataSource(useDataSource)
-  //   const appConfig = getAppStore().getState()?.appConfig
-  //   const widgetLabel = appConfig?.widgets?.[outputDsWidgetId]?.label
-  //   const partProps = { id, enableDataAction, isHeightAuto, isWidthAuto, headerFontSetting: curLayer?.headerFontSetting, emptyTable, horizontalTag }
-  //   const searchOn = curLayer?.enableSearch && curLayer?.searchFields?.length !== 0
-  //   const toolListNode = mobileFlag ? this.renderDropdownToolList(curLayer, dataSource) : this.renderButtonToolList(curLayer, dataSource)
-  //   // If 'view in table', use selection view
-  //   const useLayerDs = curLayer.dataActionObject && curLayer.dataActionType === TableDataActionType.View
-
-  //   return (
-  //     <div className={classes} css={getStyle(theme, mobileFlag, searchOn, partProps)} ref={el => (this.refs.currentEl = el)}>
-  //       <div className='surface-1 border-0 h-100'>
-  //         <div className='table-indent'>
-  //           <div
-  //             className={`d-flex ${horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
-  //               }`}
-  //           >
-  //             {/* someting wrong in lint check for Tabs */}
-  //             {horizontalTag
-  //               ? (
-  //                 <Fragment>
-  //                   <Tabs type='underline' onChange={this.onTagClick} className='tab-flex' value={activeTabId} onClose={this.onCloseTab} scrollable>
-  //                     {
-  //                       allLayersConfig.map(item => {
-  //                         const isDataAction = !!item.dataActionObject
-  //                         return (
-  //                           <Tab
-  //                             key={item.id}
-  //                             id={item.id}
-  //                             title={item.name}
-  //                             className='text-truncate tag-size'
-  //                             closeable={isDataAction}
-  //                           >
-  //                             <div className='mt-2' />
-  //                           </Tab>
-  //                         )
-  //                       }) as any
-  //                     }
-  //                   </Tabs>
-  //                 </Fragment>
-  //               )
-  //               : (
-  //                 <Select
-  //                   size='sm'
-  //                   value={activeTabId}
-  //                   onChange={this.handleTagChange}
-  //                   className='top-drop'
-  //                 >
-  //                   {allLayersConfig.map(item => {
-  //                     return (
-  //                       <option key={item.id} value={item.id} title={item.name}>
-  //                         <div className='table-action-option'>
-  //                           <div className='table-action-option-tab' title={item.name}>{item.name}</div>
-  //                           {item.dataActionObject &&
-  //                             <div className='table-action-option-close'>
-  //                               <Button
-  //                                 size='sm'
-  //                                 icon
-  //                                 type='tertiary'
-  //                                 onClick={(evt) => { this.onCloseTab(item.id, evt) }}
-  //                               >
-  //                                 <CloseOutlined size='s' />
-  //                               </Button>
-  //                             </div>
-  //                           }
-  //                         </div>
-  //                       </option>
-  //                     )
-  //                   })}
-  //                 </Select>
-  //               )
-  //             }
-  //             {!searchOn && toolListNode}
-  //           </div>
-  //           <div
-  //             className={`${arrangeType === TableArrangeType.Tabs
-  //                 ? 'horizontal-render-con'
-  //                 : 'dropdown-render-con'
-  //               }`}
-  //           >
-  //             {searchOn && this.renderSearchTools(curLayer?.searchHint)}
-  //             {searchOn &&
-  //               <div ref='suggestPopup' style={{ position: 'relative', top: 25 }}>
-  //                 <Popper
-  //                   css={getSuggestionStyle()}
-  //                   placement='bottom-start'
-  //                   reference={this.refs.suggestPopup}
-  //                   offset={[0, 8]}
-  //                   open={isShowSuggestion}
-  //                   trapFocus={false}
-  //                   autoFocus={false}
-  //                   toggle={e => {
-  //                     this.setState({ isShowSuggestion: !isShowSuggestion })
-  //                   }}
-  //                 >
-  //                   {searchSuggestion.map((suggestion, index) => {
-  //                     const suggestionHtml = sanitizer.sanitize(
-  //                       suggestion.suggestionHtml
-  //                     )
-  //                     return (
-  //                       <Button
-  //                         key={index}
-  //                         type='secondary'
-  //                         size='sm'
-  //                         onClick={() => { this.onSuggestionConfirm(suggestion.suggestion) }}
-  //                         dangerouslySetInnerHTML={{ __html: suggestionHtml }}
-  //                       />
-  //                     )
-  //                   })}
-  //                 </Popper>
-  //               </div>
-  //             }
-  //             {/* Use Dropdown component instead of api */}
-  //             {searchOn && toolListNode}
-  //             {emptyTable &&
-  //               <div className='placeholder-table-con'>
-  //                 <WidgetPlaceholder
-  //                   icon={require('./assets/icon.svg')}
-  //                   message={this.formatMessage('noData')}
-  //                 />
-  //                 {notReady &&
-  //                   <div className='placeholder-alert-con'>
-  //                     <Alert
-  //                       form='tooltip'
-  //                       size='small'
-  //                       type='warning'
-  //                       text={this.formatMessage('outputDataIsNotGenerated', { outputDsLabel: dataSourceLabel, sourceWidgetName: widgetLabel })}
-  //                     />
-  //                   </div>
-  //                 }
-  //               </div>
-  //             }
-  //             {/* Hide the Reset button temporarily */}
-  //             {/* {emptyData &&
-  //               <div className='placeholder-reset-con'>
-  //                 <WidgetPlaceholder
-  //                   icon={warningIcon}
-  //                   message={this.formatMessage('noData')}
-  //                 />
-  //                 <Button
-  //                   className="placeholder-reset-button"
-  //                   size='sm'
-  //                   title={this.formatMessage('reset')}
-  //                   onClick={this.clearMessageAction}
-  //                 >
-  //                   {this.formatMessage('reset')}
-  //                 </Button>
-  //               </div>
-  //             } */}
-  //             <div ref='tableContainer' className='table-con' />
-
-  //             {curLayer?.updateText && (showLoading || interval > 0) && this.renderLoading(showLoading, interval)}
-  //             {curLayer?.showCount && this.renderTableCount(tableTotal, tableSelected)}
-  //             <div className='ds-container'>
-  //               {(dataSource || useDataSource) &&
-  //                 <DataSourceComponent
-  //                   widgetId={id}
-  //                   useDataSource={Immutable(useDataSource)}
-  //                   dataSource={useLayerDs ? dataSource : null}
-  //                   onDataSourceCreated={this.onDataSourceCreated}
-  //                   onDataSourceInfoChange={this.onDataSourceInfoChange}
-  //                   onQueryRequired={this.onQueryRequired}
-  //                 />
-  //               }
-  //             </div>
-  //             {/* connection to map */}
-  //             {this.mapWidgetId &&
-  //               <JimuMapViewComponent
-  //                 useMapWidgetId={this.mapWidgetId}
-  //                 onActiveViewChange={this.onActiveViewChange}
-  //               />}
-  //             <Global styles={getGlobalTableTools(theme)} />
-  //           </div>
-  //         </div>
-  //       </div>
-  //       <ReactResizeDetector
-  //         handleWidth
-  //         handleHeight
-  //         onResize={this.debounceOnResize}
-  //       />
-  //     </div>
-  //   )
-  // }
   render() {
     const {
       activeTabId,
@@ -2746,31 +2551,206 @@ export default class Widget extends React.PureComponent<
     const classes = classNames(
       'jimu-widget',
       'widget-table',
-      'table-widget-' + this.props.id
+      'table-widget-' + id
     )
- 
+
+    if (allLayersConfig.length === 0) {
+      return (
+        <WidgetPlaceholder
+          widgetId={id}
+          iconSize='large'
+          style={{ position: 'absolute', left: 0, top: 0 }}
+          icon={tablePlaceholderIcon}
+          data-testid='tablePlaceholder'
+        />
+      )
+    }
+
+    const horizontalTag = arrangeType === TableArrangeType.Tabs
+    const dataSourceLabel = dataSource?.getLabel()
+    const outputDsWidgetId = appConfigUtils.getWidgetIdByOutputDataSource(useDataSource)
+    const appConfig = getAppStore().getState()?.appConfig
+    const widgetLabel = appConfig?.widgets?.[outputDsWidgetId]?.label
+    const partProps = { id, enableDataAction, isHeightAuto, isWidthAuto, headerFontSetting: curLayer?.headerFontSetting, emptyTable, horizontalTag }
+    const searchOn = curLayer?.enableSearch && curLayer?.searchFields?.length !== 0
+    const toolListNode = mobileFlag ? this.renderDropdownToolList(curLayer, dataSource) : this.renderButtonToolList(curLayer, dataSource)
+    // If 'view in table', use selection view
+    const useLayerDs = curLayer.dataActionObject && curLayer.dataActionType === TableDataActionType.View
+
     return (
-      <div className={classes} css={getStyle(this.props.theme, false, false, {})} ref={el => (this.refs.currentEl = el)}>
+      <div className={classes} css={getStyle(theme, mobileFlag, searchOn, partProps)} ref={el => (this.refs.currentEl = el)}>
         <div className='surface-1 border-0 h-100'>
           <div className='table-indent'>
-            {/* הצגת שם השכבה וה-URL בלבד */}
-            <div className="layer-info mb-2" style={{ direction: 'ltr', fontSize: '14px', color: '#444' }}>
-              <strong>Layer:</strong> {this.customLayerName}
-              {this.customLayerUrl && (
-                <span style={{ marginLeft: '16px', fontSize: '12px', color: '#888' }}>
-                  <strong>URL:</strong> <span style={{ wordBreak: 'break-all' }}>{this.customLayerUrl}</span>
-                </span>
-              )}
+            <div
+              className={`d-flex ${
+                horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
+              }`}
+            >
+              {/* someting wrong in lint check for Tabs */}
+              {horizontalTag
+                ? (
+                  <Fragment>
+                    <Tabs type='underline' onChange={this.onTagClick} className='tab-flex' value={activeTabId} onClose={this.onCloseTab} scrollable>
+                      {
+                        allLayersConfig.map(item => {
+                          const isDataAction = !!item.dataActionObject
+                          return (
+                            <Tab
+                              key={item.id}
+                              id={item.id}
+                              title={item.name}
+                              className='text-truncate tag-size'
+                              closeable={isDataAction}
+                            >
+                              <div className='mt-2' />
+                            </Tab>
+                          )
+                        }) as any
+                      }
+                    </Tabs>
+                  </Fragment>
+                  )
+                : (
+                  <Select
+                    size='sm'
+                    value={activeTabId}
+                    onChange={this.handleTagChange}
+                    className='top-drop'
+                  >
+                    {allLayersConfig.map(item => {
+                      return (
+                        <option key={item.id} value={item.id} title={item.name}>
+                          <div className='table-action-option'>
+                            <div className='table-action-option-tab' title={item.name}>{item.name}</div>
+                            {item.dataActionObject &&
+                            <div className='table-action-option-close'>
+                              <Button
+                                size='sm'
+                                icon
+                                type='tertiary'
+                                onClick={(evt) => { this.onCloseTab(item.id, evt) }}
+                              >
+                                <CloseOutlined size='s' />
+                              </Button>
+                            </div>
+                            }
+                          </div>
+                        </option>
+                      )
+                    })}
+                  </Select>
+                  )
+              }
+              {!searchOn && toolListNode}
             </div>
-            {/* מציגים רק את הטבלה, ללא טאבים/דרופדאון */}
-            <div className='table-con' ref='tableContainer' />
-            {/* אפשר להשאיר את שאר הכלים (סינון, כפתורים, וכו') אם הם עובדים על ה-DataSource הזה */}
-            {/* ...existing code for loading, count, map, etc... */}
+            <div
+              className={`${
+                arrangeType === TableArrangeType.Tabs
+                  ? 'horizontal-render-con'
+                  : 'dropdown-render-con'
+              }`}
+            >
+              {searchOn && this.renderSearchTools(curLayer?.searchHint)}
+              {searchOn &&
+                <div ref='suggestPopup' style={{ position: 'relative', top: 25 }}>
+                  <Popper
+                    css={getSuggestionStyle()}
+                    placement='bottom-start'
+                    reference={this.refs.suggestPopup}
+                    offset={[0, 8]}
+                    open={isShowSuggestion}
+                    trapFocus={false}
+                    autoFocus={false}
+                    toggle={e => {
+                      this.setState({ isShowSuggestion: !isShowSuggestion })
+                    }}
+                  >
+                    {searchSuggestion.map((suggestion, index) => {
+                      const suggestionHtml = sanitizer.sanitize(
+                        suggestion.suggestionHtml
+                      )
+                      return (
+                        <Button
+                          key={index}
+                          type='secondary'
+                          size='sm'
+                          onClick={() => { this.onSuggestionConfirm(suggestion.suggestion) }}
+                          dangerouslySetInnerHTML={{ __html: suggestionHtml }}
+                        />
+                      )
+                    })}
+                  </Popper>
+                </div>
+              }
+              {/* Use Dropdown component instead of api */}
+              {searchOn && toolListNode}
+              {emptyTable &&
+                <div className='placeholder-table-con'>
+                  <WidgetPlaceholder
+                    icon={require('./assets/icon.svg')}
+                    message={this.formatMessage('noData')}
+                  />
+                  {notReady &&
+                    <div className='placeholder-alert-con'>
+                      <Alert
+                        form='tooltip'
+                        size='small'
+                        type='warning'
+                        text={this.formatMessage('outputDataIsNotGenerated', { outputDsLabel: dataSourceLabel, sourceWidgetName: widgetLabel })}
+                      />
+                    </div>
+                  }
+                </div>
+              }
+              {/* Hide the Reset button temporarily */}
+              {/* {emptyData &&
+                <div className='placeholder-reset-con'>
+                  <WidgetPlaceholder
+                    icon={warningIcon}
+                    message={this.formatMessage('noData')}
+                  />
+                  <Button
+                    className="placeholder-reset-button"
+                    size='sm'
+                    title={this.formatMessage('reset')}
+                    onClick={this.clearMessageAction}
+                  >
+                    {this.formatMessage('reset')}
+                  </Button>
+                </div>
+              } */}
+              <div ref='tableContainer' className='table-con' />
+
+              {curLayer?.updateText && (showLoading || interval > 0) && this.renderLoading(showLoading, interval)}
+              {curLayer?.showCount && this.renderTableCount(tableTotal, tableSelected)}
+              <div className='ds-container'>
+                {(dataSource || useDataSource) &&
+                  <DataSourceComponent
+                    widgetId={id}
+                    useDataSource={Immutable(useDataSource)}
+                    dataSource={useLayerDs ? dataSource : null}
+                    onDataSourceCreated={this.onDataSourceCreated}
+                    onDataSourceInfoChange={this.onDataSourceInfoChange}
+                    onQueryRequired={this.onQueryRequired}
+                  />
+                }
+              </div>
+              {/* connection to map */}
+              {this.mapWidgetId &&
+                <JimuMapViewComponent
+                  useMapWidgetId={this.mapWidgetId}
+                  onActiveViewChange={this.onActiveViewChange}
+                />}
+              <Global styles={getGlobalTableTools(theme)} />
+            </div>
           </div>
         </div>
-        {/* ...existing code... */}
+        <ReactResizeDetector
+          handleWidth
+          handleHeight
+          onResize={this.debounceOnResize}
+        />
       </div>
     )
   }
-// }
 }
