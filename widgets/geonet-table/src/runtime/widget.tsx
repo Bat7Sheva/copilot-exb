@@ -2554,17 +2554,23 @@ State
     let useDataSource
     const curLayer = allLayersConfig.find(item => item.id === activeTabId)
     if (curLayer?.dataActionDataSource) dataSource = curLayer.dataActionDataSource as QueriableDataSource
-    if (allLayersConfig.length > 0) {
-      useDataSource = curLayer
-        ? curLayer.useDataSource
-        : allLayersConfig[0].useDataSource
-    }
-    const classes = classNames(
-      'jimu-widget',
-      'widget-table',
-      'table-widget-' + id
-    )
 
+    // --- FIX: If no config layers, but there are dynamic layers (from layerList), use them for initial table ---
+    // If there are no config layers, but there are dynamic layers (from layerList/viewInTableObj), show the table for the first available dynamic layer
+    if (allLayersConfig.length === 0 && this.props.viewInTableObj && Object.keys(this.props.viewInTableObj).length > 0) {
+      // Use the first dynamic layer as the current layer
+      const firstDynamicKey = Object.keys(this.props.viewInTableObj)[0]
+      const firstDynamicLayer = this.props.viewInTableObj[firstDynamicKey]?.daLayerItem
+      if (firstDynamicLayer) {
+        allLayersConfig.push(firstDynamicLayer)
+        // Set activeTabId if not already set
+        if (!activeTabId || !allLayersConfig.find(l => l.id === activeTabId)) {
+          this.setState({ activeTabId: firstDynamicLayer.id })
+        }
+      }
+    }
+
+    // Now, continue as usual
     if (allLayersConfig.length === 0) {
       return (
         <WidgetPlaceholder
