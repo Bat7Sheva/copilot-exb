@@ -513,100 +513,94 @@ State
     const prevSelectedLayerUrl = prevProps.selectedLayerUrl;
 
     // Detect if layerList or selectedLayerUrl changed
-    if (
-      (layerList && prevLayerList !== layerList) ||
-      (selectedLayerUrl && prevSelectedLayerUrl !== selectedLayerUrl)
-    ) {
-      // 1. For each layer in layerList, find the layer in the map by URL
-      // 2. For each, get/create DS, create table config, and add to viewInTableObj
-      // 3. Set activeTabId to selectedLayerUrl
+    // FIX: Only run if the actual content of the layerList or selectedLayerUrl changed
+    const layerListChanged = !lodash.isEqual(layerList, prevLayerList);
+    const selectedLayerChanged = selectedLayerUrl !== prevSelectedLayerUrl;
 
-      // Helper: Find map layer by URL
-      const findMapLayerByUrl = (mapView, url) => {
-        const allLayers = getAllLayers(mapView);
-        return allLayers?.find(l => l.url === url);
-      };
+    // Prevent infinite loop: Only update if viewInTableObj really needs to change
+    if ((layerListChanged || selectedLayerChanged) && this.currentJimuMapView?.view && Array.isArray(layerList)) {
+      // Build what the new viewInTableObj should be
+      const newViewInTableObj = { ...viewInTableObj };
+      let needsUpdate = false;
 
-      // Helper: Get or create DataSource for a layer
-      const getOrCreateDataSource = async (layerUrl, layerName) => {
-        // Try to find existing DS
-        const allDs = this.dsManager.getAllDataSources();
-        let ds = Object.values(allDs).find(ds => ds?.url === layerUrl);
+      for (const entry of layerList) {
+        const url = entry.url || entry.layerUrl;
+        if (!url) continue;
+        // Check if already exists
+        const alreadyExists = Object.values(newViewInTableObj).some(obj =>
+          obj?.daLayerItem?.dataActionDataSource?.url === url
+        );
+        if (alreadyExists) continue;
+
+        // 1. Find map layer
+        const allLayers = getAllLayers(this.currentJimuMapView.view);
+        const mapLayer = allLayers?.find(l => l.url === url);
+        if (!mapLayer) continue;
+
+        // 2. Get/create DS
+        // eslint-disable-next-line no-await-in-loop
+        let ds = Object.values(this.dsManager.getAllDataSources()).find(ds => ds?.url === url);
         if (!ds) {
-          ds = await this.createDataSourceFromUrl(layerUrl, { layerName });
+          // eslint-disable-next-line no-await-in-loop
+          ds = await this.createDataSourceFromUrl(url, { layerName: entry.name || mapLayer.title });
         }
-        return ds;
-      };
+        if (!ds) continue;
 
-      // Only proceed if mapView is ready
-      if (this.currentJimuMapView?.view && Array.isArray(layerList)) {
-        const newViewInTableObj = { ...viewInTableObj };
-        for (const entry of layerList) {
-          const url = entry.url || entry.layerUrl;
-          if (!url) continue;
-          // 1. Find map layer
-          const mapLayer = findMapLayerByUrl(this.currentJimuMapView.view, url);
-          if (!mapLayer) continue;
-          // 2. Get/create DS
-          const ds = await getOrCreateDataSource(url, entry.name || mapLayer.title);
-          if (!ds) continue;
-          // 3. Create table config (like addToTable)
-          const allFields = ds.getSchema()?.fields ? Object.values(ds.getSchema().fields) : [];
-          const defaultInvisible = [
-            'CreationDate',
-            'Creator',
-            'EditDate',
-            'Editor',
-            'GlobalID'
-          ];
-          const initTableFields = allFields.filter(
-            item => !defaultInvisible.includes(item.jimuName)
-          ).map(ele => ({ ...ele, visible: true }));
-          const newItemId = `DaTable-${ds.id}`;
-          const useDataSource = {
-            dataSourceId: ds.id,
-            mainDataSourceId: ds.getMainDataSource()?.id,
-            dataViewId: ds.dataViewId,
-            rootDataSourceId: ds.getRootDataSource()?.id
-          };
-          const daLayerItem = {
-            id: newItemId,
-            name: entry.name || mapLayer.title || url,
-            allFields,
-            tableFields: initTableFields,
-            enableAttachements: false,
-            enableEdit: false,
-            allowCsv: false,
-            enableSearch: false,
-            searchFields: [],
-            enableRefresh: false,
-            enableSelect: true,
-            selectMode: SelectionModeType.Multiple,
-            dataActionObject: true,
-            dataActionType: TableDataActionType.Add,
-            dataActionDataSource: ds
-          };
-          newViewInTableObj[newItemId] = { daLayerItem, records: [] };
-        }
-        // 4. Update state
+        // 3. Create table config (like addToTable)
+        const allFields = ds.getSchema()?.fields ? Object.values(ds.getSchema().fields) : [];
+        const defaultInvisible = [
+          'CreationDate',
+          'Creator',
+          'EditDate',
+          'Editor',
+          'GlobalID'
+        ];
+        const initTableFields = allFields.filter(
+          item => !defaultInvisible.includes(item.jimuName)
+        ).map(ele => ({ ...ele, visible: true }));
+        const newItemId = `DaTable-${ds.id}`;
+        const daLayerItem = {
+          id: newItemId,
+          name: entry.name || mapLayer.title || url,
+          allFields,
+          tableFields: initTableFields,
+          enableAttachements: false,
+          enableEdit: false,
+          allowCsv: false,
+          enableSearch: false,
+          searchFields: [],
+          enableRefresh: false,
+          enableSelect: true,
+          selectMode: SelectionModeType.Multiple,
+          dataActionObject: true,
+          dataActionType: TableDataActionType.Add,
+          dataActionDataSource: ds
+        };
+        newViewInTableObj[newItemId] = { daLayerItem, records: [] };
+        needsUpdate = true;
+      }
+
+      // Only update state/store if something actually changed
+      if (needsUpdate) {
         MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', newViewInTableObj);
+      }
 
-        // 5. Set activeTabId by selectedLayerUrl
-        if (selectedLayerUrl) {
-          // Find the tab id by DS id (which is based on url)
-          const activeTabId = Object.keys(newViewInTableObj).find(tabId => {
-            const item = newViewInTableObj[tabId];
-            return item?.daLayerItem?.dataActionDataSource?.url === selectedLayerUrl;
-          });
-          if (activeTabId) {
-            this.setState({ activeTabId });
-            this.props.dispatch(
-              appActions.widgetStatePropChange(id, 'activeTabId', activeTabId)
-            );
-          }
+      // Only setState if activeTabId really needs to change
+      if (selectedLayerUrl) {
+        const activeTabId = Object.keys(newViewInTableObj).find(tabId => {
+          const item = newViewInTableObj[tabId];
+          return item?.daLayerItem?.dataActionDataSource?.url === selectedLayerUrl;
+        });
+        if (activeTabId && activeTabId !== this.state.activeTabId) {
+          this.setState({ activeTabId });
+          this.props.dispatch(
+            appActions.widgetStatePropChange(id, 'activeTabId', activeTabId)
+          );
         }
       }
     }
+
+    // ...existing code...
   }
 
   getTimezone = (dataSource) => {
