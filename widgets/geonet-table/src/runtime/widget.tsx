@@ -2552,25 +2552,25 @@ State
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     let useDataSource
-    const curLayer = allLayersConfig.find(item => item.id === activeTabId)
+    const curLayer = allLayersConfig.find(item => item.id === this.state.activeTabId)
     if (curLayer?.dataActionDataSource) dataSource = curLayer.dataActionDataSource as QueriableDataSource
 
-    // --- FIX: If no config layers, but there are dynamic layers (from layerList), use them for initial table ---
-    // If there are no config layers, but there are dynamic layers (from layerList/viewInTableObj), show the table for the first available dynamic layer
+    // --- UPDATE: Support initial table load when only dynamic layers exist (no config layers) ---
+    // If there are no config layers, but there are dynamic layers (from viewInTableObj), use them for the table
     if (allLayersConfig.length === 0 && this.props.viewInTableObj && Object.keys(this.props.viewInTableObj).length > 0) {
-      // Use the first dynamic layer as the current layer
       const firstDynamicKey = Object.keys(this.props.viewInTableObj)[0]
       const firstDynamicLayer = this.props.viewInTableObj[firstDynamicKey]?.daLayerItem
       if (firstDynamicLayer) {
         allLayersConfig.push(firstDynamicLayer)
-        // Set activeTabId if not already set
-        if (!activeTabId || !allLayersConfig.find(l => l.id === activeTabId)) {
-          this.setState({ activeTabId: firstDynamicLayer.id })
+        // Set activeTabId if not already set or not matching
+        if (!this.state.activeTabId || !allLayersConfig.find(l => l.id === this.state.activeTabId)) {
+          setTimeout(() => {
+            this.setState({ activeTabId: firstDynamicLayer.id })
+          }, 0)
         }
       }
     }
 
-    // Now, continue as usual
     if (allLayersConfig.length === 0) {
       return (
         <WidgetPlaceholder
