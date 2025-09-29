@@ -101,6 +101,7 @@ import FilterPopup from "./components/filter-popup";
 import ReactDOM from "react-dom/client";
 import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
 import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
+// import { Help } from 'widgets/shared-code/common-components/help'
 
 
 // import warningIcon from 'jimu-icons/svg/outlined/suggested/warning.svg'
@@ -176,10 +177,10 @@ State
   currentJimuMapView: JimuMapView;
   mapWidgetId: string;
   filtersState = {} as Record<string, { name: string; value: any; query: string }>;
-  mapExtentFiltered: boolean = false;
-  mapExtentFilterQuery: string = '';
-  originalDefinitionExpression: string = '';
-  customLayerUrl: string = 'https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/0';
+  // mapExtentFiltered: boolean = false;
+  // mapExtentFilterQuery: string = '';
+  // originalDefinitionExpression: string = '';
+  // customLayerUrl: string = 'https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/0';
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -364,9 +365,9 @@ State
     return dataSource;
   }
 
-  async componentDidMount() {
+  componentDidMount() {
     if (!this.state.apiLoaded) {
-      await loadArcGISJSAPIModules([
+      loadArcGISJSAPIModules([
         'esri/widgets/FeatureTable',
         'esri/layers/FeatureLayer',
         'esri/widgets/FeatureTable/support/TableTemplate',
@@ -383,12 +384,6 @@ State
       })
     }
       this.initializeCurrentMapWidget()
-          // // טעינה אוטומטית מה-URL שלך
-    // const layerUrl = this.customLayerUrl;
-    // const dataSource = await this.createDataSourceFromUrl(layerUrl, { layerName: 'GEONET' });
-    // await this.destoryTable();
-    // this.createTable(dataSource);
-    // this.createTable();
   }
 
   componentWillUnmount () {
@@ -404,11 +399,7 @@ State
     const { activeTabId, dataSource, tableLoaded } = this.state
     const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
-    // const { activeTabId } = prevState
-    // get data-action table config
     const daLayersConfig = this.getDataActionTable()
-    // const daLayersConfig = new Widget(nextProps).getDataActionTable()
-
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const dataActionActiveObj = this.props?.stateProps?.dataActionActiveObj
     const newActiveTabId = dataActionActiveObj?.dataActionTable ? dataActionActiveObj?.activeTabId : activeTabId
@@ -506,9 +497,9 @@ State
       this.table.layer.definitionExpression = this.lastSql
       this.lastSql = ''
     }
-
+    
     // --- GEONET: Handle Layer List and Selected Layer URL ---
-    const { layerList, selectedLayerUrl, id, viewInTableObj } = this.props;
+    const { layerList, selectedLayerUrl } = this.props;
     const prevLayerList = prevProps.layerList;
     const prevSelectedLayerUrl = prevProps.selectedLayerUrl;
 
@@ -599,8 +590,6 @@ State
         }
       }
     }
-
-    // ...existing code...
   }
 
   getTimezone = (dataSource) => {
@@ -736,7 +725,7 @@ State
 
   onActiveViewChange = (jimuMapView: JimuMapView) => {
     if (jimuMapView) {
-      this.currentJimuMapView = jimuMapView;
+      this.currentJimuMapView = jimuMapView;      
     }
   };
 
@@ -1463,17 +1452,6 @@ State
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const curLayerConfig = allLayersConfig.find(item => item.id === activeTabId)
-    
-    // // geonet start
-    // // שינוי: אפשר להמשיך אם newDataSource קיים ואין curLayerConfig
-    // if (!curLayerConfig && newDataSource) {
-    //   // יצירת טבלה ל-DataSource חיצוני (למשל מ-URL)
-    //   this.getLayerAndNewTable(dataSource, {}, undefined)
-    //   this.deferAttachFilters()
-    //   return
-    // }
-    // // geonet end
-
     if (!curLayerConfig) {
       this.dataActionCanLoad = true
       this.updatingTable = false
@@ -1505,20 +1483,11 @@ State
     const curDsId = dataActionDataSource ? dataActionDataSource?.id : curLayerConfig?.useDataSource?.dataSourceId
     const isCurDs = curLayerConfig.dataActionType === TableDataActionType.View || curDsId === dataSource?.id
     if (!isCurDs) {
-    // if (!isCurDs && !newDataSource) { // geonet
       this.dataActionCanLoad = true
       this.updatingTable = false
       return
     }
-    // geonet start
-    // // Check whether ds is available
-    // if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
-     //   this.resetUpdatingStatus(true)
-     //   return
-    // }
-    // geonet start
-
-        // Check whether ds is available
+    // Check whether ds is available
     if (!this.isDataSourceAccessible(curDsId, dataActionObject, dataActionDataSource)) {
       this.resetUpdatingStatus(true)
       return
@@ -1802,48 +1771,6 @@ State
       console.warn("לא נמצא vaadin-grid או שאין לו shadowRoot");
     }
   }
-
-  // onToggleMapExtentFilter = async () => {
-  //   const mapView = this.currentJimuMapView?.view;
-  //   const table = this.table;
-  //   if (!mapView || !table || !table.layer) return;
- 
-  //   if (!this.mapExtentFiltered) {
-  //     // שמור את הביטוי המקורי
-  //     this.originalDefinitionExpression = table.layer.definitionExpression || '';
-  //     // קבל את התיחום הנוכחי של המפה
-  //     const extent = mapView.extent;
-  //     if (!extent) return;
-  //     // צור ביטוי מרחבי
-  //     const spatialQuery = `INTERSECTS(SHAPE, Envelope(${extent.xmin}, ${extent.ymin}, ${extent.xmax}, ${extent.ymax}))`;
-  //     const content ={
-  //       'Input Geometry': {
-  //         "xmin": extent.xmin
-  //         ,"ymin": extent.ymin
-  //         ,"xmax": extent.xmax
-  //         ,"ymax": extent.ymax
-  //         ,"spatialReference": {"wkid":2039 ,"latestWkid":2039}
-  //       },
-  //       'f': 'json',
-  //       'Return Geometry': false
-  //     }
-
-  //         // const result = await postRequestService(content, baseUrl);
-      
-
-  //     this.mapExtentFilterQuery = spatialQuery;
-  //     table.layer.definitionExpression = spatialQuery;
-  //     await this.filterMap(spatialQuery);
-  //     this.mapExtentFiltered = true;
-  //   } else {
-  //     // החזר את הביטוי המקורי
-  //     table.layer.definitionExpression = this.originalDefinitionExpression;
-  //     await this.filterMap(this.originalDefinitionExpression);
-  //     this.mapExtentFiltered = false;
-  //   }
-  //   // עדכן את הכותרת של הכפתור
-  //   this.forceUpdate();
-  // }
 
   onCleanFilter = async () => {
     this.resetTableExpression();
@@ -2372,20 +2299,12 @@ State
     const dataName = this.formatMessage('tableDataActionLabel', { layer: dataSourceLabel || '' })
 
     return <div className='top-button-list'>
-
-      {/* geonet - filter by map extent */}
-      {/* <div className='top-button ml-2'>
-        <Button
-          size='sm'
-          onClick={this.onToggleMapExtentFilter}
-          icon
-          title={this.mapExtentFiltered ? this.formatMessage('undoFilterByMapExtend') : this.formatMessage('filterByMapExtend')}
-          disabled={!tableLoaded || emptyTable } >
-          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt="filter by map extent" />
-        </Button>
-      </div> */}
-
+      
+      {/* geonet - help */}
+      {/* <Help></Help> */}
+      
       {/* geonet - clearFilter */}
+
       <div className='top-button ml-2'>
         <Button
           size='sm'
