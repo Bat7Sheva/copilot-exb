@@ -8,7 +8,7 @@ import {
   type QueriableDataSource,
   Immutable,
   appActions,
-  lodash,
+  // lodash,
   type QueryParams,
   MessageManager,
   DataRecordsSelectionChangeMessage,
@@ -102,6 +102,7 @@ import ReactDOM from "react-dom/client";
 import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
 import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
 // import { Help } from 'widgets/shared-code/common-components/help'
+import lodash from 'lodash'
 
 
 // import warningIcon from 'jimu-icons/svg/outlined/suggested/warning.svg'
@@ -525,16 +526,12 @@ State
 
         // 1. Find map layer
         const allLayers = getAllLayers(this.currentJimuMapView.view);
-        const mapLayer = allLayers?.find(l => l.url === url);
+        const mapLayer = allLayers?.find(l => `${l.url}/${l.layerId}` === url);
         if (!mapLayer) continue;
 
         // 2. Get/create DS
-        // eslint-disable-next-line no-await-in-loop
-        let ds = Object.values(this.dsManager.getAllDataSources()).find(ds => ds?.url === url);
-        if (!ds) {
-          // eslint-disable-next-line no-await-in-loop
-          ds = await this.createDataSourceFromUrl(url, { layerName: entry.name || mapLayer.title });
-        }
+        const jLayerView = getjimuLayerViewByLayer(this.currentJimuMapView, mapLayer);
+        const ds = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
         if (!ds) continue;
 
         // 3. Create table config (like addToTable)
@@ -657,7 +654,7 @@ State
     ]
     const referenceTypeKeys = ['tableFields']
     for (const item of optionKeys) {
-      const changeFlag = referenceTypeKeys.includes(item) ? !lodash.isDeepEqual(prevCurConfig?.[item], newCurConfig?.[item]) : (prevCurConfig?.[item] !== newCurConfig?.[item])
+      const changeFlag = referenceTypeKeys.includes(item) ? !_.isEqual(prevCurConfig?.[item], newCurConfig?.[item]) : (prevCurConfig?.[item] !== newCurConfig?.[item])
       if (changeFlag) {
         optionChangeFlag = true
         break
@@ -754,12 +751,12 @@ State
       const orgGeometryJson = (this.table?.filterGeometry as any)?.toJSON()
       if (geometryType !== 'polygon' && distance && distance <= 0) {
         const emptyBuff = new this.Polygon({ rings: [] })
-        if (!lodash.isDeepEqual(orgGeometryJson, emptyBuff?.toJSON())) {
+        if (!_.isEqual(orgGeometryJson, emptyBuff?.toJSON())) {
           (this.table.filterGeometry as any) = emptyBuff
         }
       } else if (distance && units) {
         const geometryBuff = useBufferMethod(geometry as any, distance, units as any)
-        if (!lodash.isDeepEqual(orgGeometryJson, (geometryBuff as __esri.Polygon)?.toJSON())) {
+        if (!_.isEqual(orgGeometryJson, (geometryBuff as __esri.Polygon)?.toJSON())) {
           (this.table.filterGeometry as any) = geometryBuff
         }
       } else { // only extent change
@@ -1514,7 +1511,7 @@ State
     this.table?.highlightIds?.removeAll && this.table.highlightIds.removeAll()
     // selection passed from URL parameters
     const curSelectRecords = dataSource?.getSelectedRecords()
-    if (curSelectRecords && !lodash.isDeepEqual(selectRecords, curSelectRecords)) {
+    if (curSelectRecords && !_.isEqual(selectRecords, curSelectRecords)) {
       this.setState({ selectRecords: curSelectRecords })
     }
     // Synchronize new selection (the record of selectedRecords has different structure)
