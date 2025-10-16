@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>גלריית מה חדש</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: transparent;
+            min-height: 100vh;
+        }
+
+        .open-btn {
+            background: white;
+            color: #e74c3c;
+            border: 3px solid #e74c3c;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .open-btn:hover {
+            background: #fee;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 999;
+            backdrop-filter: blur(3px);
+        }
+
+        .overlay.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from { 
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #4DB8A8 0%, #2D9687 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-header h2 {
+            font-size: 28px;
+            margin: 0;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 28px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .gallery-container {
+            padding: 30px;
+        }
+
+        .slide {
+            display: none;
+            text-align: center;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .slide img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .slide h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .slide p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .nav-btn {
+            background: #4DB8A8;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #2D9687;
+            transform: scale(1.1);
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dot.active {
+            background: #4DB8A8;
+            width: 25px;
+            border-radius: 5px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dont-show-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .dont-show-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .slide-counter {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <button class="open-btn" onclick="openModal()">🎉 מה חדש?</button>
+
+    <div class="overlay" id="overlay" onclick="closeOnOverlay(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeModal()">×</button>
+                <h2>✨ מה חדש באפליקציה</h2>
+            </div>
+
+            <div class="gallery-container">
+                <div class="slide active">
+                    <h3>ממשק משתמש חדש</h3>
+                    <p>עיצוב מודרני ונקי שמקל על הניווט והשימוש באפליקציה. חוויית משתמש משופרת עם אנימציות חלקות.</p>
+                    <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&h=300&fit=crop" alt="תכונה 1">
+                </div>
+
+                <div class="slide">
+                    <h3>מצב כהה</h3>
+                    <p>כעת תוכלו לעבוד גם בשעות הערב עם מצב כהה נוח לעיניים. החלפה קלה בין מצב בהיר לכהה.</p>
+                    <img src="https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=600&h=300&fit=crop" alt="תכונה 2">
+                </div>
+
+                <div class="slide">
+                    <h3>סנכרון בענן</h3>
+                    <p>כל הנתונים שלכם מסונכרנים אוטומטית בענן. גישה מכל מכשיר, בכל זמן ומכל מקום.</p>
+                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&h=300&fit=crop" alt="תכונה 3">
+                </div>
+
+                <div class="slide">
+                    <h3>ביצועים משופרים</h3>
+                    <p>האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.</p>
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop" alt="תכונה 4">
+                </div>
+				  <div class="slide">
+                    <h3>333ביצועים משופרים</h3>
+                    <p>האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.</p>
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop" alt="תכונה 4">
+                </div>
+
+                <div class="navigation">
+                    <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">→</button>
+                    
+                    <div class="dots" id="dotsContainer"></div>
+                    
+                    <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">←</button>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="dont-show-btn" onclick="disablePopup()">
+                     אל תציג שוב
+                </button>
+                <span class="slide-counter">
+                    <span id="currentSlide">1</span> / <span id="totalSlides">4</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        // יצירת נקודות ניווט
+        function createDots() {
+            const dotsContainer = document.getElementById('dotsContainer');
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                if (i === 0) dot.classList.add('active');
+                dot.onclick = () => goToSlide(i);
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        function updateSlideCounter() {
+            document.getElementById('currentSlide').textContent = currentSlide + 1;
+            document.getElementById('totalSlides').textContent = totalSlides;
+        }
+
+        function showSlide(n) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[n].classList.add('active');
+
+            // עדכון נקודות
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach(dot => dot.classList.remove('active'));
+            dots[n].classList.add('active');
+
+            // עדכון כפתורים
+            document.getElementById('prevBtn').disabled = (n === 0);
+            document.getElementById('nextBtn').disabled = (n === totalSlides - 1);
+
+            updateSlideCounter();
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = 0;
+            if (currentSlide >= totalSlides) currentSlide = totalSlides - 1;
+            showSlide(currentSlide);
+        }
+
+        function goToSlide(n) {
+            currentSlide = n;
+            showSlide(currentSlide);
+        }
+
+        function openModal() {
+            // בדיקה אם המשתמש ביקש לא להציג
+            if (dontShowAgain) {
+                return;
+            }
+            document.getElementById('overlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('overlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            // איפוס לשקופית הראשונה
+            currentSlide = 0;
+            showSlide(currentSlide);
+        }
+
+        function closeOnOverlay(event) {
+            if (event.target.id === 'overlay') {
+                closeModal();
+            }
+        }
+
+        let dontShowAgain = false;
+
+        function disablePopup() {
+            dontShowAgain = true;
+            alert('החלון "מה חדש" לא יוצג יותר בסשן הזה');
+            closeModal();
+        }
+
+        // אירועי מקלדת
+        document.addEventListener('keydown', (e) => {
+            const overlay = document.getElementById('overlay');
+            if (overlay.classList.contains('active')) {
+                if (e.key === 'ArrowLeft') changeSlide(-1);
+                if (e.key === 'ArrowRight') changeSlide(1);
+                if (e.key === 'Escape') closeModal();
+            }
+        });
+
+        // אתחול
+        createDots();
+        showSlide(0);
+    </script>
+</body>
+</html>
