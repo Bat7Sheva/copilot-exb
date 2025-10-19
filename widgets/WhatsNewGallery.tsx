@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { css } from '@emotion/react';
+/** @jsx jsx */
+import { css, jsx, React, type AllWidgetProps, defaultMessages as jimuCoreMessages } from 'jimu-core'
+import { useState, useRef, useEffect } from 'react';
+
 
 const slidesData = [
   {
