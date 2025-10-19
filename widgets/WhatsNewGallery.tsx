@@ -5,38 +5,12 @@ import { useState, useRef, useEffect } from 'react';
 
 export interface IWhatsNewGalleryProps {
   isVisible: boolean;
+  config: any;
   onClose?: () => void;        // סגירה זמנית (לחיצה על X / overlay)
   onDontShow?: () => void;     // אל תציג שוב (קבוע)
   formatMessage?: (id: string) => string;
 }
 
-const slidesData = [
-  {
-    title: 'ממשק משתמש חדש',
-    desc: 'עיצוב מודרני ונקי שמקל על הניווט והשימוש באפליקציה. חוויית משתמש משופרת עם אנימציות חלקות.',
-    img: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&h=300&fit=crop',
-  },
-  {
-    title: 'מצב כהה',
-    desc: 'כעת תוכלו לעבוד גם בשעות הערב עם מצב כהה נוח לעיניים. החלפה קלה בין מצב בהיר לכהה.',
-    img: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=600&h=300&fit=crop',
-  },
-  {
-    title: 'סנכרון בענן',
-    desc: 'כל הנתונים שלכם מסונכרנים אוטומטית בענן. גישה מכל מכשיר, בכל זמן ומכל מקום.',
-    img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&h=300&fit=crop',
-  },
-  {
-    title: 'ביצועים משופרים',
-    desc: 'האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.',
-    img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop',
-  },
-  {
-    title: '333ביצועים משופרים',
-    desc: 'האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.',
-    img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop',
-  },
-];
 
 const galleryStyle = css`
   direction: rtl;
@@ -90,7 +64,7 @@ const galleryStyle = css`
     font-size: 20px;
     width: 36px;
     height: 36px;
-    border-radius: 8px;
+    border-radius: 50%;
     cursor: pointer;
     transition: background 0.15s;
     display: flex; align-items: center; justify-content: center;
@@ -103,7 +77,7 @@ const galleryStyle = css`
   .slide h3 { color: #222; margin-bottom: 8px; font-size: 18px; }
   .slide p { color: #555; line-height: 1.5; font-size: 14px; }
   .navigation { display:flex; justify-content:space-between; align-items:center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #eee; }
-  .nav-btn { background:#4DB8A8; color:white; border:none; width:40px; height:40px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:transform .12s; }
+  .nav-btn { background:#4DB8A8; color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:transform .12s; }
   .nav-btn:hover:not(:disabled){ transform: scale(1.05); background:#2D9687; }
   .nav-btn:disabled{ opacity:.5; cursor:not-allowed; background:#ccc; }
   .dots{ display:flex; gap:8px; }
@@ -116,12 +90,16 @@ const galleryStyle = css`
 
 export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
   isVisible,
+  config,
   onClose,
   onDontShow,
   formatMessage
 }) => {
+
   const [current, setCurrent] = useState(0);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const slidesData = config.slidesData;
+
 
   useEffect(() => {
     if (isVisible) {
@@ -138,7 +116,7 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') setCurrent(c => Math.max(0, c - 1));
       if (e.key === 'ArrowRight') setCurrent(c => Math.min(slidesData.length - 1, c + 1));
-      if (e.key === 'Escape') (onClose || (() => {}))();
+      if (e.key === 'Escape') (onClose || (() => { }))();
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -170,8 +148,8 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
       >
         <div className="modal" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
-            <button className="close-btn" onClick={closeHandler} aria-label={formatMessage?.('close') || 'Close'}>×</button>
-            <h2>{formatMessage?.('whatsNewTitle') || '✨ מה חדש באפליקציה'}</h2>
+            <button className="close-btn" onClick={closeHandler} aria-label={formatMessage('close')}>×</button>
+            <h2>{formatMessage('whatsNewTitle')}</h2>
           </div>
 
           <div className="gallery-container">
@@ -204,7 +182,7 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
           </div>
 
           <div className="modal-footer">
-            <button className="dont-show-btn" onClick={dontShowHandler}>{formatMessage?.('dontShowAgain') || 'אל תציג שוב'}</button>
+            <button className="dont-show-btn" onClick={dontShowHandler}>{formatMessage('dontShowAgain')}</button>
             <div className="slide-counter">
               <span>{current + 1}</span> / <span>{slidesData.length}</span>
             </div>
@@ -213,110 +191,6 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
       </div>
     </div>,
     document.body
-  );
-};
-
-export default WhatsNewGallery;
-  .dont-show-btn:hover {
-    background: #c0392b;
-    transform: translateY(-2px);
-  }
-  .slide-counter {
-    color: #666;
-    font-size: 14px;
-  }
-`;
-
-export const WhatsNewGallery: React.FC = () => {
-  const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState(0);
-  const [dontShow, setDontShow] = useState(false);
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (!open) return;
-      if (e.key === 'ArrowLeft') prevSlide();
-      if (e.key === 'ArrowRight') nextSlide();
-      if (e.key === 'Escape') closeModal();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, current]);
-
-  const openModal = () => {
-    if (dontShow) return;
-    setOpen(true);
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeModal = () => {
-    setOpen(false);
-    document.body.style.overflow = 'auto';
-    setCurrent(0);
-  };
-
-  const prevSlide = () => setCurrent(c => Math.max(0, c - 1));
-  const nextSlide = () => setCurrent(c => Math.min(slidesData.length - 1, c + 1));
-  const goToSlide = (idx: number) => setCurrent(idx);
-
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === overlayRef.current) closeModal();
-  };
-
-  const handleDontShow = () => {
-    setDontShow(true);
-    closeModal();
-    window.alert('החלון "מה חדש" לא יוצג יותר בסשן הזה');
-  };
-
-  return (
-    <div css={galleryStyle}>
-      <button className="open-btn" onClick={openModal}>🎉 מה חדש?</button>
-      <div
-        className={`overlay${open ? ' active' : ''}`}
-        ref={overlayRef}
-        onClick={handleOverlayClick}
-        tabIndex={-1}
-        aria-modal="true"
-        role="dialog"
-      >
-        <div className="modal" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <button className="close-btn" onClick={closeModal}>×</button>
-            <h2>✨ מה חדש באפליקציה</h2>
-          </div>
-          <div className="gallery-container">
-            {slidesData.map((slide, idx) => (
-              <div className={`slide${current === idx ? ' active' : ''}`} key={idx}>
-                <h3>{slide.title}</h3>
-                <p>{slide.desc}</p>
-                <img src={slide.img} alt={`תכונה ${idx + 1}`} />
-              </div>
-            ))}
-            <div className="navigation">
-              <button className="nav-btn" onClick={prevSlide} disabled={current === 0}>→</button>
-              <div className="dots">
-                {slidesData.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`dot${current === idx ? ' active' : ''}`}
-                    onClick={() => goToSlide(idx)}
-                  />
-                ))}
-              </div>
-              <button className="nav-btn" onClick={nextSlide} disabled={current === slidesData.length - 1}>←</button>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button className="dont-show-btn" onClick={handleDontShow}>אל תציג שוב</button>
-            <span className="slide-counter">
-              <span>{current + 1}</span> / <span>{slidesData.length}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 };
 
