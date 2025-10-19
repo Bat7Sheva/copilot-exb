@@ -85,7 +85,52 @@ const galleryStyle = css`
   .dot.active{ background:#4DB8A8; width:22px; border-radius:6px; }
   .modal-footer{ padding:12px 18px; border-top:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; }
   .dont-show-btn{ background:#e74c3c; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-size:13px; }
-  .slide-counter{ color:#666; font-size:13px; }
+
+  /* כפתור מקסימייז/ריסטור */
+  .resize-btn {
+    position: absolute;
+    top: 12px;
+    left: 56px; /* ליד כפתור ה-close (שכבר ב-left:12) */
+    background: rgba(255,255,255,0.12);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: background .15s;
+  }
+  .resize-btn:hover { background: rgba(255,255,255,0.22); }
+
+  /* ידית גרירה בפינה הימנית-תחתונה */
+  .resizer {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 20px;
+    height: 20px;
+    cursor: se-resize;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .resizer:after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid rgba(0,0,0,0.15);
+    border-bottom: 2px solid rgba(0,0,0,0.15);
+    transform: rotate(45deg);
+    opacity: 0.6;
+  }
+
+  /* עדכון גבול רדיוס כללי ל-10px (אם צריך) */
+  .modal { border-radius: 10px; }
+  .modal-header { border-radius: 10px 10px 0 0; }
 `;
 
 export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
@@ -98,6 +143,16 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
 
   const [current, setCurrent] = useState(0);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+
+  // new: size state (defaults from config or fallback)
+  const defaultWidth = (config && config.defaultWidth) ? config.defaultWidth : '720px';
+  const defaultHeight = (config && config.defaultHeight) ? config.defaultHeight : '520px';
+  const [modalWidth, setModalWidth] = useState<string>(defaultWidth);
+  const [modalHeight, setModalHeight] = useState<string>(defaultHeight);
+  const [isMaximized, setIsMaximized] = useState<boolean>(false);
+  const prevSizeRef = useRef<{ w: string; h: string } | null>(null);
+  const isResizingRef = useRef(false);
+
   const slidesData = config.slidesData;
 
 
@@ -111,6 +166,7 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
     return () => { document.body.style.overflow = 'auto'; };
   }, [isVisible]);
 
+  // keyboard handling (existing)
   useEffect(() => {
     if (!isVisible) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -121,6 +177,65 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isVisible, onClose]);
+
+  // --- Resize handlers (mouse)
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      // compute new width/height based on mouse position and modal position
+      const modalEl = document.querySelector('.modal') as HTMLElement | null;
+      if (!modalEl) return;
+      const rect = modalEl.getBoundingClientRect();
+      // new width/height ensuring min/max
+      const minW = 320;
+      const minH = 200;
+      const maxW = window.innerWidth - 40;
+      const maxH = window.innerHeight - 40;
+      const newW = Math.max(minW, Math.min(maxW, Math.round(e.clientX - rect.left)));
+      const newH = Math.max(minH, Math.min(maxH, Math.round(e.clientY - rect.top)));
+      setModalWidth(newW + 'px');
+      setModalHeight(newH + 'px');
+      // when manually resizing we are not maximized
+      if (isMaximized) setIsMaximized(false);
+    };
+
+    const onMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        document.body.style.userSelect = '';
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isMaximized]);
+
+  const onResizerMouseDown = (e: React.MouseEvent) => {
+    isResizingRef.current = true;
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  };
+
+  // maximize / restore
+  const toggleMaximize = () => {
+    if (!isMaximized) {
+      // store previous
+      prevSizeRef.current = { w: modalWidth, h: modalHeight };
+      setModalWidth('96vw');
+      setModalHeight('86vh');
+      setIsMaximized(true);
+    } else {
+      // restore
+      const prev = prevSizeRef.current;
+      setModalWidth(prev?.w || defaultWidth);
+      setModalHeight(prev?.h || defaultHeight);
+      setIsMaximized(false);
+    }
+  };
 
   const closeHandler = () => {
     if (onClose) onClose();
@@ -146,14 +261,35 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        <div className="modal" onClick={e => e.stopPropagation()}>
+        {/* pass dynamic style for width/height */}
+        <div
+          className="modal"
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: modalWidth,
+            height: modalHeight,
+            maxWidth: '96vw',
+            maxHeight: '96vh'
+          }}
+        >
           <div className="modal-header">
             <button className="close-btn" onClick={closeHandler} aria-label={formatMessage('close')}>×</button>
+
+            {/* resize / maximize button */}
+            <button
+              className="resize-btn"
+              onClick={toggleMaximize}
+              aria-label={isMaximized ? 'Restore' : 'Maximize'}
+              title={isMaximized ? 'שחזור גודל' : 'הגדל לחלון מלא'}
+            >
+              {isMaximized ? '🗗' : '⬚'}
+            </button>
+
             <h2>{formatMessage('whatsNewTitle')}</h2>
           </div>
 
           <div className="gallery-container">
-            {slidesData.map((slide, idx) => (
+            {slidesData.map((slide: any, idx: number) => (
               <div className={`slide${current === idx ? ' active' : ''}`} key={idx}>
                 <h3>{slide.title}</h3>
                 <p>{slide.desc}</p>
@@ -165,7 +301,7 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
               <button className="nav-btn" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0} aria-label="prev">←</button>
 
               <div className="dots" role="tablist" aria-label="slides">
-                {slidesData.map((_, idx) => (
+                {slidesData.map((_: any, idx: number) => (
                   <div
                     key={idx}
                     className={`dot${current === idx ? ' active' : ''}`}
@@ -187,6 +323,9 @@ export const WhatsNewGallery: React.FC<IWhatsNewGalleryProps> = ({
               <span>{current + 1}</span> / <span>{slidesData.length}</span>
             </div>
           </div>
+
+          {/* resizer handle בפינה הימנית תחתונה */}
+          <div className="resizer" onMouseDown={onResizerMouseDown} aria-hidden="true" />
         </div>
       </div>
     </div>,
