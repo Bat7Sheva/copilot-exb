@@ -16,6 +16,7 @@ System.register([],
                     fromDatePlaceHolder: 'מתאריך',
                     toDatePlaceHolder: 'עד תאריך',
                     clearFilter: 'נקה סינון',
+                    filterByMapDelineation: 'סינון לפי תיחום מפה'
                 })
             }
         }

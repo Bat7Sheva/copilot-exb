@@ -80,7 +80,9 @@ export interface Config {
   arrangeType: TableArrangeType,
   datePattern: string,
   dateRegExp: string,
-  query: QueryItem
+  query: QueryItem,
+  internalTutorialLink: string,
+  externalTutorialLink: string
 }
 
 export type IMConfig = ImmutableObject<Config>

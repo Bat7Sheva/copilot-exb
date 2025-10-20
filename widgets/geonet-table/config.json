@@ -5,7 +5,9 @@
   "dateRegExp": "^(0?[1-9]|[12][0-9]|3[01])[/\\-](0?[1-9]|1[012])[/\\-]\\d{4}$",
   "queries": {
     "text": "{0} LIKE '%{1}%'",
-    "date": "{0} >= timestamp '{1}' AND {0} <= timestamp '{2}'", 
+    "date": "{0} >= timestamp '{1}' AND {0} <= timestamp '{2}'",
     "checkboxList": "{0} IN ({1})"
-  }
+  },
+  "internalTutorialLink": "https://geo-app1-d.pwd.comp/videos/%D7%9E%D7%A2%D7%A8%D7%9B%D7%AA-%D7%92%D7%90%D7%95%D7%A0%D7%98.mp4",
+  "externalTutorialLink": "https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Felearningportal.iroads.co.il%2Felearning%2F%25D7%2592%25D7%2590%25D7%2595%25D7%25A0%25D7%2598%2F%25D7%25A1%25D7%25A8%25D7%2598%25D7%2595%25D7%259F-%25D7%2592%25D7%2590%25D7%2595%25D7%25A0%25D7%2598.mp4&data=05%7C02%7CBatshevaL%40iroads.co.il%7C336dd6a568fd47c35dcc08de0be92dff%7Cf5d5f8c03b6a429faa3e855e3298cd95%7C0%7C0%7C638961293276937687%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=okmdliuJ7AXEqD2uYQmOXGKaLMcGhrOOXCrmmHjic5g%3D&reserved=0"
 }

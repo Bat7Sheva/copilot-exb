@@ -140,6 +140,12 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
             filter: grayscale(100%) brightness(80%);
             opacity: 0.5;
           }
+
+          .clicked-btn {
+           border: 1px solid;
+           border-radius: 8px;
+           background-color: var(--secondary-100);
+          }
         }
       }
       .table-search-div{

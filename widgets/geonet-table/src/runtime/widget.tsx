@@ -101,7 +101,7 @@ import FilterPopup from "./components/filter-popup";
 import ReactDOM from "react-dom/client";
 import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
 import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
-// import { Help } from 'widgets/shared-code/common-components/help'
+import { Help } from '../../../shared-code/common-components/help'
 import lodash from 'lodash'
 
 
@@ -131,7 +131,7 @@ export interface Props {
   isHeightAuto: boolean
   [propName: string]: any
   layerList: GeonetLayerEntry[]
-	selectedLayerUrl?: string | null
+  selectedLayerUrl?: string | null
 }
 
 export interface State {
@@ -170,18 +170,14 @@ export interface tableSelectedItem {
 }
 
 export default class Widget extends React.PureComponent<
-AllWidgetProps<IMConfig> & Props,
-State
+  AllWidgetProps<IMConfig> & Props,
+  State
 > {
   static versionManager = versionManager
   table: __esri.FeatureTable
   currentJimuMapView: JimuMapView;
   mapWidgetId: string;
   filtersState = {} as Record<string, { name: string; value: any; query: string }>;
-  // mapExtentFiltered: boolean = false;
-  // mapExtentFilterQuery: string = '';
-  // originalDefinitionExpression: string = '';
-  // customLayerUrl: string = 'https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/0';
 
   dataSourceChange: boolean
   dataActionCanLoad: boolean
@@ -217,6 +213,7 @@ State
   filterImage = require("./assets/filter.svg");
   cleanFilterImage = require("./assets/clean-filter.svg");
 
+  hasFilterByMapDelineation: boolean = false;
 
   static mapExtraStateProps = (
     state: IMState,
@@ -263,7 +260,7 @@ State
     }
   }
 
-  constructor (props) {
+  constructor(props) {
     super(props)
 
     this.state = {
@@ -312,7 +309,7 @@ State
     this.dsManager = DataSourceManager.getInstance()
   }
 
-  static getDerivedStateFromProps (nextProps, prevState) {
+  static getDerivedStateFromProps(nextProps, prevState) {
     const { config } = nextProps
     const { layersConfig } = config
     const { activeTabId } = prevState
@@ -341,31 +338,6 @@ State
     }
   }
 
-  async createDataSourceFromUrl(layerUrl: string, options?: { layerName?: string }) {
-    if (!this.FeatureLayer) {
-      await loadArcGISJSAPIModules(['esri/layers/FeatureLayer']).then(modules => {
-        ;[this.FeatureLayer] = modules
-      })
-    }
-    const featureLayer = new this.FeatureLayer({ url: layerUrl });
-    await featureLayer.load();
-
-    const dsId = `custom-url-ds-${Date.now()}`;
-    const dsJson = Immutable({
-      id: dsId,
-      type: DataSourceTypes.FeatureLayer,
-      url: layerUrl,
-      label: options?.layerName || featureLayer.title || layerUrl
-    });
-    const dsOption = {
-      id: dsId,
-      dataSourceJson: dsJson,
-      layer: featureLayer
-    };
-    const dataSource = await this.dsManager.createDataSource(dsOption);
-    return dataSource;
-  }
-
   componentDidMount() {
     if (!this.state.apiLoaded) {
       loadArcGISJSAPIModules([
@@ -384,10 +356,10 @@ State
         })
       })
     }
-      this.initializeCurrentMapWidget()
+    this.initializeCurrentMapWidget()
   }
 
-  componentWillUnmount () {
+  componentWillUnmount() {
     const { id } = this.props
     this.promises.forEach(p => { p.cancel() })
     this.destoryTable()
@@ -396,7 +368,7 @@ State
     MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', {})
   }
 
-  async componentDidUpdate (prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
+  async componentDidUpdate(prevProps: AllWidgetProps<IMConfig> & Props, prevState: State) {
     const { activeTabId, dataSource, tableLoaded } = this.state
     const { id, config, currentPageId, state, appMode, viewInTableObj } = this.props
     const { layersConfig } = config
@@ -404,6 +376,19 @@ State
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const dataActionActiveObj = this.props?.stateProps?.dataActionActiveObj
     const newActiveTabId = dataActionActiveObj?.dataActionTable ? dataActionActiveObj?.activeTabId : activeTabId
+    const { layerList, selectedLayerUrl } = this.props;
+    const prevLayerList = prevProps.layerList;
+    const prevSelectedLayerUrl = prevProps.selectedLayerUrl;
+
+    // Detect if layerList or selectedLayerUrl changed
+    // FIX: Only run if the actual content of the layerList or selectedLayerUrl changed
+    const layerListChanged = !lodash.isEqual(layerList, prevLayerList);
+    const selectedLayerChanged = selectedLayerUrl !== prevSelectedLayerUrl;
+
+    // Prevent infinite loop: Only update if viewInTableObj really needs to change
+    if ((layerListChanged || selectedLayerChanged) && this.currentJimuMapView?.view && Array.isArray(layerList)) {
+      await this.onLayerListChange();
+    }
     // deal with runtime update caused by setting change
     this.onSettingChangeRuntime()
     // view in table filter change
@@ -498,95 +483,7 @@ State
       this.table.layer.definitionExpression = this.lastSql
       this.lastSql = ''
     }
-    
-    // --- GEONET: Handle Layer List and Selected Layer URL ---
-    const { layerList, selectedLayerUrl } = this.props;
-    const prevLayerList = prevProps.layerList;
-    const prevSelectedLayerUrl = prevProps.selectedLayerUrl;
 
-    // Detect if layerList or selectedLayerUrl changed
-    // FIX: Only run if the actual content of the layerList or selectedLayerUrl changed
-    const layerListChanged = !lodash.isEqual(layerList, prevLayerList);
-    const selectedLayerChanged = selectedLayerUrl !== prevSelectedLayerUrl;
-
-    // Prevent infinite loop: Only update if viewInTableObj really needs to change
-    if ((layerListChanged || selectedLayerChanged) && this.currentJimuMapView?.view && Array.isArray(layerList)) {
-      // Build what the new viewInTableObj should be
-      const newViewInTableObj = { ...viewInTableObj };
-      let needsUpdate = false;
-
-      for (const entry of layerList) {
-        const url = entry.url || entry.layerUrl;
-        if (!url) continue;
-        // Check if already exists
-        const alreadyExists = Object.values(newViewInTableObj).some(obj =>
-          obj?.daLayerItem?.dataActionDataSource?.url === url
-        );
-        if (alreadyExists) continue;
-
-        // 1. Find map layer
-        const allLayers = getAllLayers(this.currentJimuMapView.view);
-        const mapLayer = allLayers?.find(l => `${l.url}/${l.layerId}` === url);
-        if (!mapLayer) continue;
-
-        // 2. Get/create DS
-        const jLayerView = getjimuLayerViewByLayer(this.currentJimuMapView, mapLayer);
-        const ds = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
-        if (!ds) continue;
-
-        // 3. Create table config (like addToTable)
-        const allFields = ds.getSchema()?.fields ? Object.values(ds.getSchema().fields) : [];
-        const defaultInvisible = [
-          'CreationDate',
-          'Creator',
-          'EditDate',
-          'Editor',
-          'GlobalID'
-        ];
-        const initTableFields = allFields.filter(
-          item => !defaultInvisible.includes(item.jimuName)
-        ).map(ele => ({ ...ele, visible: true }));
-        const newItemId = `DaTable-${ds.id}`;
-        const daLayerItem = {
-          id: newItemId,
-          name: entry.name || mapLayer.title || url,
-          allFields,
-          tableFields: initTableFields,
-          enableAttachements: false,
-          enableEdit: false,
-          allowCsv: false,
-          enableSearch: false,
-          searchFields: [],
-          enableRefresh: false,
-          enableSelect: true,
-          selectMode: SelectionModeType.Multiple,
-          dataActionObject: true,
-          dataActionType: TableDataActionType.Add,
-          dataActionDataSource: ds
-        };
-        newViewInTableObj[newItemId] = { daLayerItem, records: [] };
-        needsUpdate = true;
-      }
-
-      // Only update state/store if something actually changed
-      if (needsUpdate) {
-        MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', newViewInTableObj);
-      }
-
-      // Only setState if activeTabId really needs to change
-      if (selectedLayerUrl) {
-        const activeTabId = Object.keys(newViewInTableObj).find(tabId => {
-          const item = newViewInTableObj[tabId];
-          return item?.daLayerItem?.dataActionDataSource?.url === selectedLayerUrl;
-        });
-        if (activeTabId && activeTabId !== this.state.activeTabId) {
-          this.setState({ activeTabId });
-          this.props.dispatch(
-            appActions.widgetStatePropChange(id, 'activeTabId', activeTabId)
-          );
-        }
-      }
-    }
   }
 
   getTimezone = (dataSource) => {
@@ -612,6 +509,85 @@ State
       this.props.dispatch(
         appActions.widgetStatePropChange(id, 'removeLayerFlag', false)
       )
+    }
+  }
+  onLayerListChange = async () => {
+    const { id, viewInTableObj, layerList, selectedLayerUrl } = this.props
+
+    // Build what the new viewInTableObj should be
+    const newViewInTableObj = { ...viewInTableObj };
+    let needsUpdate = false;
+
+    for (const entry of layerList) {
+      const url = entry.url || entry.layerUrl;
+      if (!url || !entry.loaded) continue;
+      // Check if already exists
+      const alreadyExists = Object.values(newViewInTableObj).some(obj =>
+        obj?.daLayerItem?.dataActionDataSource?.url === url
+      );
+      if (alreadyExists) continue;
+
+      // 1. Find map layer
+      const allLayers = getAllLayers(this.currentJimuMapView.view);
+      const mapLayer = allLayers?.find(l => `${l.url}/${l.layerId}` === url);
+      if (!mapLayer) continue;
+
+      // 2. Get/create DS
+      const jLayerView = getjimuLayerViewByLayer(this.currentJimuMapView, mapLayer);
+      const ds = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
+      if (!ds) continue;
+
+      // 3. Create table config (like addToTable)
+      const allFields = ds.getSchema()?.fields ? Object.values(ds.getSchema().fields) : [];
+      const defaultInvisible = [
+        'CreationDate',
+        'Creator',
+        'EditDate',
+        'Editor',
+        'GlobalID'
+      ];
+      const initTableFields = allFields.filter(
+        item => !defaultInvisible.includes(item.jimuName)
+      ).map(ele => ({ ...ele, visible: true }));
+      const newItemId = `DaTable-${ds.id}`;
+      const daLayerItem = {
+        id: newItemId,
+        name: entry.name || mapLayer.title || url,
+        allFields,
+        tableFields: initTableFields,
+        enableAttachements: false,
+        enableEdit: false,
+        allowCsv: false,
+        enableSearch: false,
+        searchFields: [],
+        enableRefresh: false,
+        enableSelect: true,
+        selectMode: SelectionModeType.Multiple,
+        dataActionObject: true,
+        dataActionType: TableDataActionType.Add,
+        dataActionDataSource: ds
+      };
+      newViewInTableObj[newItemId] = { daLayerItem, records: [] };
+      needsUpdate = true;
+    }
+
+    // Only update state/store if something actually changed
+    if (needsUpdate) {
+      MutableStoreManager.getInstance().updateStateValue(id, 'viewInTableObj', newViewInTableObj);
+    }
+
+    // Only setState if activeTabId really needs to change
+    if (selectedLayerUrl) {
+      const activeTabId = Object.keys(newViewInTableObj).find(tabId => {
+        const item = newViewInTableObj[tabId];
+        return item?.daLayerItem?.dataActionDataSource?.url === selectedLayerUrl;
+      });
+      if (activeTabId && activeTabId !== this.state.activeTabId) {
+        this.setState({ activeTabId });
+        this.props.dispatch(
+          appActions.widgetStatePropChange(id, 'activeTabId', activeTabId)
+        );
+      }
     }
   }
 
@@ -722,7 +698,7 @@ State
 
   onActiveViewChange = (jimuMapView: JimuMapView) => {
     if (jimuMapView) {
-      this.currentJimuMapView = jimuMapView;      
+      this.currentJimuMapView = jimuMapView;
     }
   };
 
@@ -1077,14 +1053,14 @@ State
     const selectedQuery =
       selectedItems && selectedItems.length > 0
         ? `${objectIdField} IN (${selectedItems
-            .map(item => {
-              if (item.dataSource) {
-                return item.getId()
-              } else {
-                return item
-              }
-            })
-            .join()})`
+          .map(item => {
+            if (item.dataSource) {
+              return item.getId()
+            } else {
+              return item
+            }
+          })
+          .join()})`
         : ''
     if (versionChangeClear) dataSource.clearSelection()
     const syncSqlResult = (records) => {
@@ -1402,9 +1378,11 @@ State
             this.timerFn = setTimeout(() => {
               this.setState({ selfDsChange: true })
               const objectId = context.item.objectId
-              if (curLayerConfig.selectMode === SelectionModeType.Single) {
-                this.table.highlightIds.removeAll()
-              }
+              // geonet comment 
+              // if (curLayerConfig.selectMode === SelectionModeType.Single) {
+              //   this.table.highlightIds.removeAll()
+              // }
+              // geonet
               context.selected
                 ? this.table.highlightIds.remove(objectId)
                 : this.table.highlightIds.add(objectId)
@@ -1496,7 +1474,7 @@ State
       }
     }
     this.getLayerAndNewTable(dataSource, curLayerConfig, dataRecords)
-    
+
     // add filtration charging after creating a table
     this.deferAttachFilters()
   }
@@ -1523,7 +1501,7 @@ State
     }
   }
 
-  async destoryTable () {
+  async destoryTable() {
     if (this.table) {
       (this.table as any).menu.open = false
       !this.table.destroyed && this.table.destroy()
@@ -1566,13 +1544,15 @@ State
     this.props.dispatch(
       appActions.widgetStatePropChange(id, 'activeTabId', dataSourceId)
     )
+    // בשינוי טאב, לעדכן את ה selectedLayer.
+    // this.props.dispatch({ type: GeonetLayerActionKeys.GeoLayerSelect, val: { url: null } })
   }
 
   getMyGrid(): HTMLElement | null {
     const root = this.refs.tableContainer || document
     return root.querySelector('vaadin-grid')
   }
-  
+
   deferAttachFilters() {
     const tryAttach = (attempt = 0) => {
       const grid = this.getMyGrid()
@@ -1618,22 +1598,18 @@ State
   buildColumnFilters = () => {
     const vaadinGrid = document.querySelector("vaadin-grid");
 
-    // vaadinGrid.addEventListener("click", (event: MouseEvent) => {
+    vaadinGrid.addEventListener("click", (event: MouseEvent) => {
 
-    //   setTimeout(() => {
-    //     const selectedItems = (vaadinGrid as any).selectedItems;
-    //     console.log(selectedItems);
+      const ctx = (vaadinGrid as any).getEventContext(event);
 
-    //     if(selectedItems.length){
+      if (ctx && ctx.item) {
+        const item = ctx.item; // row data
 
-    //       const selectedItemsArr = selectedItems.map(x=> x.objectId);
-    //       const query = `objectId in (${selectedItemsArr.join(", ")})`
-
-    //       this.filterMap(query, true);
-    //     }
-
-    //   }, 300);
-    // });
+        if (item?.objectId) {
+          this.filterMap(`objectId=${item?.objectId}`, true, true);
+        }
+      }
+    });
 
     vaadinGrid.addEventListener("dblclick", (event: MouseEvent) => {
 
@@ -1771,7 +1747,7 @@ State
 
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState =  {} as Record<string, { name: string; value: any; query: string }>;
+    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -1787,7 +1763,15 @@ State
     await this.filterMap();
   }
 
-  filterMap = async (query: string = '', zoomToFeature: boolean = false) => {
+  onFilterByMapDelineation = async () => {
+    console.log('filter by map delineation...');
+    this.hasFilterByMapDelineation = !this.hasFilterByMapDelineation;
+    
+    // this.table.layer.definitionExpression
+    // await this.filterMap();
+  }
+
+  filterMap = async (query: string = '', zoomToFeature: boolean = false, drawGraghic: boolean = false) => {
     const mapView = this.currentJimuMapView.view as __esri.MapView;
     const layer = this.table.layer;
     const layerUrl = `${layer.url}/${layer.layerId}`;
@@ -1814,11 +1798,15 @@ State
 
         (featureDS as QueriableDataSource)?.updateQueryParams(queryParams, this.mapWidgetId);
       } else {
-          const result = await queryService(layerUrl, query, [], true, false);
-          if (result?.features?.length > 0) {
-            await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
-            await drawGraghicOnMap(result.features[0].geometry, mapView);
+        const result = await queryService(layerUrl, query, [], true, false);
+        if (result?.features?.length > 0) {
+          if (drawGraghic) {
+            await drawGraghicOnMap(result.features[0].geometry, mapView, -2);
+            return;
           }
+          await clearGraphicLayers(["mapLineSymbol", "mapPointSymbol", "mapPolygonSymbol", "mapMarkerPoint"], mapView);
+          await drawGraghicOnMap(result.features[0].geometry, mapView);
+        }
       }
     } catch (error) {
       console.log('error', error);
@@ -2029,7 +2017,7 @@ State
                 </div>
               </Popper>
             </div>
-            )
+          )
           : (
             <div className='d-flex align-items-center table-search'>
               <TextInput
@@ -2043,7 +2031,7 @@ State
                 title={hint || this.formatMessage('search')}
               />
             </div>
-            )}
+          )}
       </div>
     )
   }
@@ -2191,7 +2179,7 @@ State
             {bottomResponsiveFlag
               ? <Tooltip title={autoRefreshLoadingString} showArrow placement='top-end'>
                 <Button icon size='sm' type='tertiary' className='d-inline jimu-outline-inside border-0 p-0'>
-                  <InfoOutlined size={14}/>
+                  <InfoOutlined size={14} />
                 </Button>
               </Tooltip>
               : autoRefreshLoadingString
@@ -2236,7 +2224,7 @@ State
 
   customShowHideDropdownButton = () => {
     return <Fragment>
-      <ListVisibleOutlined className='mr-1'/>
+      <ListVisibleOutlined className='mr-1' />
       {this.formatMessage('showHideCols')}
     </Fragment>
   }
@@ -2284,6 +2272,7 @@ State
     const { layersConfig } = config
     const hasSelected = tableSelected > 0
     const hasFilterTable = this.table && this.table.layer && this.table.layer.definitionExpression && this.table.layer.definitionExpression !== ''
+    // const hasFilterByMapDelineation = false // to be implemented
     const initSelectTableFields = this.getInitFields()
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
@@ -2296,10 +2285,24 @@ State
     const dataName = this.formatMessage('tableDataActionLabel', { layer: dataSourceLabel || '' })
 
     return <div className='top-button-list'>
-      
+
       {/* geonet - help */}
-      {/* <Help></Help> */}
-      
+      <Help helpInfo={this.props}></Help>
+
+      {/* geonet - filterByMapDelineation */}
+
+      <div className='top-button ml-2'>
+        <Button
+          size='sm'
+          onClick={this.onFilterByMapDelineation}
+          icon
+          title={this.formatMessage('filterByMapDelineation')}
+          className={ this.hasFilterByMapDelineation ? 'clicked-btn' : ''}
+        >
+          <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt={this.formatMessage('filterByMapDelineation')} />
+        </Button>
+      </div>
+
       {/* geonet - clearFilter */}
 
       <div className='top-button ml-2'>
@@ -2311,8 +2314,8 @@ State
           disabled={!tableLoaded || emptyTable || !hasFilterTable}
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-button' : ''}
         >
-          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter" 
-          className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''}/>
+          <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter"
+            className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''} />
         </Button>
       </div>
 
@@ -2329,7 +2332,7 @@ State
             }
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
-            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip/>}
+            {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip />}
           </Button>
         </div>
       )}
@@ -2466,27 +2469,27 @@ State
           {curLayer.enableSelect &&
             <Fragment>
               <DropdownItem key='showSelection' onClick={this.onShowSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                {selectQueryFlag ? <MenuOutlined className='mr-1'/> : <ShowSelectionOutlined className='mr-1' autoFlip/>}
+                {selectQueryFlag ? <MenuOutlined className='mr-1' /> : <ShowSelectionOutlined className='mr-1' autoFlip />}
                 {selectQueryFlag
                   ? this.formatMessage('showAll')
                   : this.formatMessage('showSelection')
                 }
               </DropdownItem>
               <DropdownItem key='clearSelection' onClick={this.onSelectionClear} disabled={!tableLoaded || emptyTable || !hasSelected}>
-                <ClearSelectionGeneralOutlined className='mr-1'/>
+                <ClearSelectionGeneralOutlined className='mr-1' />
                 {this.formatMessage('clearSelection')}
               </DropdownItem>
             </Fragment>
           }
           {curLayer.enableRefresh &&
             <DropdownItem key='refresh' onClick={this.onTableRefresh} disabled={!tableLoaded || emptyTable}>
-              <RefreshOutlined className='mr-1'/>
+              <RefreshOutlined className='mr-1' />
               {this.formatMessage('refresh')}
             </DropdownItem>
           }
           {curLayer.enableEdit && !notAllowDel && false &&
             <DropdownItem key='delete' onClick={this.onDeleteSelection} disabled={!tableLoaded || emptyTable || !hasSelected}>
-              <TrashOutlined className='mr-1'/>
+              <TrashOutlined className='mr-1' />
               {this.formatMessage('delete')}
             </DropdownItem>
           }
@@ -2529,7 +2532,7 @@ State
           }
         </Fragment>
       }
-     </div>
+    </div>
   }
 
   render() {
@@ -2552,38 +2555,41 @@ State
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     let useDataSource
-    const curLayer = allLayersConfig.find(item => item.id === this.state.activeTabId)
+    const curLayer = allLayersConfig.find(item => item.id === activeTabId)
     if (curLayer?.dataActionDataSource) dataSource = curLayer.dataActionDataSource as QueriableDataSource
-
-    // --- UPDATE: Support initial table load when only dynamic layers exist (no config layers) ---
-    // If there are no config layers, but there are dynamic layers (from viewInTableObj), use them for the table
-    if (allLayersConfig.length === 0 && this.props.viewInTableObj && Object.keys(this.props.viewInTableObj).length > 0) {
-      const firstDynamicKey = Object.keys(this.props.viewInTableObj)[0]
-      const firstDynamicLayer = this.props.viewInTableObj[firstDynamicKey]?.daLayerItem
-      if (firstDynamicLayer) {
-        allLayersConfig.push(firstDynamicLayer)
-        // Set activeTabId if not already set or not matching
-        if (!this.state.activeTabId || !allLayersConfig.find(l => l.id === this.state.activeTabId)) {
-          setTimeout(() => {
-            this.setState({ activeTabId: firstDynamicLayer.id })
-          }, 0)
-        }
-      }
+    if (allLayersConfig.length > 0) {
+      useDataSource = curLayer
+        ? curLayer.useDataSource
+        : allLayersConfig[0].useDataSource
     }
+    const classes = classNames(
+      'jimu-widget',
+      'widget-table',
+      'table-widget-' + id
+    )
 
     if (allLayersConfig.length === 0) {
       return (
-        <WidgetPlaceholder
-          widgetId={id}
-          iconSize='large'
-          style={{ position: 'absolute', left: 0, top: 0 }}
-          icon={tablePlaceholderIcon}
-          data-testid='tablePlaceholder'
-        />
+
+        <React.Fragment>  {/* connection to map */}
+          <WidgetPlaceholder
+            widgetId={id}
+            iconSize='large'
+            style={{ position: 'absolute', left: 0, top: 0 }}
+            icon={tablePlaceholderIcon}
+            data-testid='tablePlaceholder'
+          />
+          {this.mapWidgetId &&
+            <JimuMapViewComponent
+              useMapWidgetId={this.mapWidgetId}
+              onActiveViewChange={this.onActiveViewChange}
+            />}
+        </React.Fragment>
       )
     }
 
-    const horizontalTag = arrangeType === TableArrangeType.Tabs
+
+    const horizontalTag = arrangeType === TableArrangeType.Dropdown//.Tabs    // geonet
     const dataSourceLabel = dataSource?.getLabel()
     const outputDsWidgetId = appConfigUtils.getWidgetIdByOutputDataSource(useDataSource)
     const appConfig = getAppStore().getState()?.appConfig
@@ -2599,9 +2605,8 @@ State
         <div className='surface-1 border-0 h-100'>
           <div className='table-indent'>
             <div
-              className={`d-flex ${
-                horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
-              }`}
+              className={`d-flex ${horizontalTag ? 'horizontal-tag-list' : 'dropdown-tag-list'
+                }`}
             >
               {/* someting wrong in lint check for Tabs */}
               {horizontalTag
@@ -2626,7 +2631,7 @@ State
                       }
                     </Tabs>
                   </Fragment>
-                  )
+                )
                 : (
                   <Select
                     size='sm'
@@ -2640,32 +2645,31 @@ State
                           <div className='table-action-option'>
                             <div className='table-action-option-tab' title={item.name}>{item.name}</div>
                             {item.dataActionObject &&
-                            <div className='table-action-option-close'>
-                              <Button
-                                size='sm'
-                                icon
-                                type='tertiary'
-                                onClick={(evt) => { this.onCloseTab(item.id, evt) }}
-                              >
-                                <CloseOutlined size='s' />
-                              </Button>
-                            </div>
+                              <div className='table-action-option-close'>
+                                <Button
+                                  size='sm'
+                                  icon
+                                  type='tertiary'
+                                  onClick={(evt) => { this.onCloseTab(item.id, evt) }}
+                                >
+                                  <CloseOutlined size='s' />
+                                </Button>
+                              </div>
                             }
                           </div>
                         </option>
                       )
                     })}
                   </Select>
-                  )
+                )
               }
               {!searchOn && toolListNode}
             </div>
             <div
-              className={`${
-                arrangeType === TableArrangeType.Tabs
-                  ? 'horizontal-render-con'
-                  : 'dropdown-render-con'
-              }`}
+              className={`${arrangeType === TableArrangeType.Tabs
+                ? 'horizontal-render-con'
+                : 'dropdown-render-con'
+                }`}
             >
               {searchOn && this.renderSearchTools(curLayer?.searchHint)}
               {searchOn &&
