@@ -215,6 +215,11 @@ export default class Widget extends React.PureComponent<
 
   hasFilterByMapDelineation: boolean = false;
 
+  // new fields to keep map view watchers and debounce handler
+  mapViewExtentWatchHandle: any = null;
+  mapViewStationaryWatchHandle: any = null;
+  debouncedApplyMapFilter: any = null;
+
   static mapExtraStateProps = (
     state: IMState,
     props: AllWidgetProps<IMConfig>
@@ -1763,12 +1768,125 @@ export default class Widget extends React.PureComponent<
     await this.filterMap();
   }
 
+  // Apply current map extent as a spatial filter to the layer's datasource and table
+  applyMapDelineationFilter = async () => {
+    try {
+      if (!this.currentJimuMapView?.view || !this.table?.layer) return;
+      const mapView = this.currentJimuMapView.view as __esri.MapView;
+      const extent = mapView.extent;
+      if (!extent) return;
+ 
+      const layer = this.table.layer as any;
+      const layerUrl = `${layer.url}/${layer.layerId}`;
+      const allLayers = getAllLayers(mapView);
+      const targetLayer = getLayerByLayerUrl(allLayers, layerUrl);
+      if (!targetLayer) return;
+ 
+      const jLayerView = getjimuLayerViewByLayer(this.currentJimuMapView, targetLayer);
+      const featureDS = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
+      if (!featureDS) {
+        // If no datasource found, still try to set table filterGeometry so table uses geometry if supported
+        try { (this.table as any).filterGeometry = extent; } catch (e) {}
+        return;
+      }
+ 
+      // // Use current where clause if present, otherwise default to '1=1'
+      // const curQuery: any = (featureDS as QueriableDataSource).getCurrentQueryParams?.() || {};
+      // const where = curQuery.where || '1=1';
+ 
+      // // Update datasource query with geometry - this will filter the records used by the table
+      // const qParams: any = { where, geometry: extent };
+      // (featureDS as QueriableDataSource).updateQueryParams(qParams, this.mapWidgetId);
+ 
+      // Also set the table's filterGeometry so FeatureTable shows the spatially filtered content
+      try { (this.table as any).filterGeometry = extent; } catch (e) {}
+    } catch (err) {
+      console.error('applyMapDelineationFilter error', err);
+    }
+  }
+ 
+  // Toggle map-delineation filtering: attach/detach watchers and apply/reset filter
   onFilterByMapDelineation = async () => {
-    console.log('filter by map delineation...');
+    // toggle state
     this.hasFilterByMapDelineation = !this.hasFilterByMapDelineation;
-    
-    // this.table.layer.definitionExpression
-    // await this.filterMap();
+ 
+    // Cleanup helper
+    const removeWatcher = (h) => {
+      if (!h) return;
+      if (typeof h.remove === 'function') { try { h.remove(); } catch (e) {} }
+      else if (typeof h === 'function') { try { h(); } catch (e) {} }
+    };
+ 
+    if (this.hasFilterByMapDelineation) {
+      // enable: attach watchers to the active map view
+      const view = this.currentJimuMapView?.view;
+      if (!view) {
+        console.warn('no active map view to attach delineation filter');
+        return;
+      }
+ 
+      // debounce to avoid too many updates during pan/zoom
+      this.debouncedApplyMapFilter = lodash.debounce(() => {
+        this.applyMapDelineationFilter();
+      }, 250);
+ 
+      // watch extent changes and stationary change (apply when interaction ends)
+      try {
+        this.mapViewExtentWatchHandle = view.watch('extent', () => {
+          if (this.debouncedApplyMapFilter) this.debouncedApplyMapFilter();
+        });
+      } catch (e) {
+        // fallback: listen to 'extent-change' event if watch not available
+        try {
+          this.mapViewExtentWatchHandle = view.on && view.on('extent-change', () => {
+            if (this.debouncedApplyMapFilter) this.debouncedApplyMapFilter();
+          });
+        } catch (err) { /* ignore */ }
+      }
+ 
+      try {
+        this.mapViewStationaryWatchHandle = view.watch('stationary', (val) => {
+          if (val && this.debouncedApplyMapFilter) this.debouncedApplyMapFilter();
+        });
+      } catch (e) {
+        // ignore if not available
+      }
+ 
+      // apply once immediately
+      this.applyMapDelineationFilter();
+    } else {
+      // disable: remove watchers and reset filters
+      removeWatcher(this.mapViewExtentWatchHandle);
+      removeWatcher(this.mapViewStationaryWatchHandle);
+      this.mapViewExtentWatchHandle = null;
+      this.mapViewStationaryWatchHandle = null;
+ 
+      if (this.debouncedApplyMapFilter && typeof this.debouncedApplyMapFilter.cancel === 'function') {
+        try { this.debouncedApplyMapFilter.cancel(); } catch (e) {}
+      }
+      this.debouncedApplyMapFilter = null;
+ 
+      // Reset the datasource params for the layer (clear geometry filter) and table filterGeometry
+      try {
+        if (this.table?.layer && this.currentJimuMapView?.view) {
+          const mapView = this.currentJimuMapView.view as __esri.MapView;
+          const layer = this.table.layer as any;
+          const layerUrl = `${layer.url}/${layer.layerId}`;
+          const allLayers = getAllLayers(mapView);
+          const targetLayer = getLayerByLayerUrl(allLayers, layerUrl);
+          const jLayerView = targetLayer ? getjimuLayerViewByLayer(this.currentJimuMapView, targetLayer) : null;
+          const featureDS = jLayerView ? await jLayerView.getOrCreateLayerDataSource() : null;
+          if (featureDS) {
+            const curQuery: any = (featureDS as QueriableDataSource).getCurrentQueryParams?.() || {};
+            const resetParams: any = { where: curQuery.where || '1=1', geometry: null };
+            (featureDS as QueriableDataSource).updateQueryParams(resetParams, this.mapWidgetId);
+          }
+          try { (this.table as any).filterGeometry = null; } catch (e) {}
+        }
+      } catch (err) {
+        console.error('error resetting map delineation filter', err);
+      }
+    }
   }
 
   filterMap = async (query: string = '', zoomToFeature: boolean = false, drawGraghic: boolean = false) => {
