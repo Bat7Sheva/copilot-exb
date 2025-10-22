@@ -1,0 +1,51 @@
+System.register([],
+    (function (e) {
+        return {
+            execute: function () {
+                e({
+                    newEdit: "מקור חדש ניתן לעריכה",
+                    newEditGeo: "שכבה חדשה ניתנת לעריכה",
+                    newEditTips: "תומך בתצוגת יישויות שנבחרו בלבד",
+                    newMapEditTips: "הוסף שכבות מהמפה",
+                    attrMode: "מאפיין בלבד",
+                    geoMode: "גיאומטריה ומאפיין",
+                    layerConfig: "תצוגת שכבות",
+                    capability: "יכולות",
+                    addRecords: "הוסף רשומות",
+                    deleteRecords: "מחק רשומות",
+                    updateRecords: "עדכן רשומות",
+                    snappingSettings: "הגדרות הצמדה",
+                    selfSnapping: "מדריכי הצמדה",
+                    featureSnapping: "ישות לישות",
+                    configFields: "הגדר שדות",
+                    configFieldsTip: "בחר שדות להצגה",
+                    importAll: "ייבא הכול",
+                    addGroup: "הוסף קבוצה",
+                    group: "קבוצה",
+                    checkAll: "בדוק הכול",
+                    uncheckAll: "הסר סימון הכל",
+                    removeGroupConfirmTitle: "בטוח שברצונך להסיר את הקבוצה?",
+                    removeGroupConfirmTips: "השדוצת שנכללים בקבוצה יוסרו אף הם.",
+                    noDataMessage: "הודעה שאין נתונים",
+                    noDeataMessageDefaultText: "לא נבחרה רשומה חוקית, בחר רשומה או הוסף רשומה.",
+                    editBlankStatus: 'לחץ על הכפתור "{EditString}" כדי להוסיף ולהגדיר {ModeString}',
+                    editableSource: "מקורות נתונים ניתנים לעריכה",
+                    editableLayer: "שכבות ניתנות לעריכה",
+                    changeModeConfirmTitle: "בטוח שברצונך להחליף מצב?",
+                    changeModeConfirmTips: "ההגדרות שהוגדרו יאבדו.",
+                    editable: "ניתן לעריכה",
+                    editFieldDescription: "הזן את התיאור.",
+                    editableCount: "{count} ניתן לעריכה",
+                    layerHonorSetting: "השתמש בהגדרות ה-Web Map",
+                    layerCustomize: "התאם",
+                    noLayerTips: "המפה אינה מכיל נתונים שניתנים לעריכה.",
+                    noMapTips: "יש לכונן חיבור עם ווידג'ט מפה.",
+                    defaultEnabled: "הפעל כברירת מחדל",
+                    chooseDefault: "בחר שכבות הצמדה של ברירת מחדל",
+                    uneditableTips: "השכבה המצב קריאה-בלבד.",
+                    prescriptiveMode: "מצב מנחה",
+                    flexibleMode: "מצב גמיש"
+                })
+            }
+        }
+    }));

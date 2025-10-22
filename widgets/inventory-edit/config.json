@@ -1,0 +1,14 @@
+{
+  "layersConfig": [],
+  "editMode": "GEOMETRY",
+  "selfSnapping": false,
+  "featureSnapping": false,
+  "defaultSelfEnabled": false,
+  "defaultFeatureEnabled": false,
+  "defaultSnapLayers": [],
+  "description": "",
+  "noDataMessage": "",
+  "snapSettingMode": "FLEXIBLE",
+  "uploadFileUrl": "https://geo-app-qa.pwd.comp/Geonet.Service.Api/api/app/UploadAttachFile",
+  "upLoadPath": "\\\\geo-app-qa\\d$\\arcgisserver\\directories\\arcgissystem\\arcgisuploads\\scratch"
+}

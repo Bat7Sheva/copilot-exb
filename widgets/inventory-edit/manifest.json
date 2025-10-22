@@ -1,0 +1,26 @@
+{
+  "name": "inventory-edit",
+  "label": "Inventory-edit",
+  "type": "widget",
+  "dependency": [
+    "jimu-arcgis"
+  ],
+  "version": "1.14.0",
+  "exbVersion": "1.14.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "This is the widget ...",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "messageActions": [],
+  "defaultSize": {
+    "width": 400,
+    "height": 400
+  },
+  "properties": {
+    "coverLayoutBackground": true
+  },
+  "translatedLocales": [
+    "en",
+    "he"
+  ]
+}
