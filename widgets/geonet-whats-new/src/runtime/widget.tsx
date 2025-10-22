@@ -9,7 +9,6 @@ import WhatsNewGallery from './components/WhatsNewGallery';
 
 const Widget = (props: AllWidgetProps<IMConfig>) => {
 
-
   const { config, intl, theme } = props;
   const [visible, setVisible] = useState(true);
   const [visibleWhatsNewGallery, setVisibleWhatsNewGallery] = useState(false);
@@ -67,6 +66,10 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   }
 
   const style = css`
+    .widget-container {
+      position: relative; /* חשוב: מאפשר overlay fixed/absolute מעל הווידג'ט */
+      direction: rtl;
+    }
     .open-btn {
       background: #f44356;
       color: #fff;
@@ -110,7 +113,7 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
 
   return (
-    <div css={style}>
+    <div css={style} className="widget-container">
       <button className="open-btn" onClick={handleWhatsNewsClick}>מה חדש</button>
 
       {visible &&
