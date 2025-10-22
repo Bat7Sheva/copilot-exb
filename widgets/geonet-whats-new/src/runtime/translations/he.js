@@ -3,11 +3,12 @@ System.register([], function (e) {
 	return {
 		execute: function () {
 			e({
-				_widgetLabel: 'geonet-cookies',
-				message1: "אתר זה עושה שימוש בקבצי cookies, בהתאם למפורט",
-				message2: "בתנאי השימוש.",
-				message3: "בעצם גלישתך באתר זה הנכם נותנים הסכמתכם לכל תנאי השימוש"
-
+				_widgetLabel: 'גאונט - מה חדש?',
+				whatsNewsPopupTitle: 'יש דברים חדשים ששווה לראות!',
+				forMoreInfo: 'למידע נוסף',
+				dontShowAgain: 'אל תציגו לי הודעה זאת שוב',
+				close: 'close',
+				whatsNewTitle: '✨ מה חדש באפליקציה',
 			})
 		}
 	}

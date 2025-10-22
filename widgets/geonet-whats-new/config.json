@@ -1,3 +1,31 @@
 {
-  "linkForIroads": "https://www.iroads.co.il/%D7%93%D7%A4%D7%99-footer/%D7%AA%D7%A0%D7%90%D7%99-%D7%A9%D7%99%D7%9E%D7%95%D7%A9-%D7%9B%D7%9C%D7%9C%D7%99/"
+    "slidesData": [
+        {
+            "title": "ממשק משתמש חדש",
+            "desc": "עיצוב מודרני ונקי שמקל על הניווט והשימוש באפליקציה. חוויית משתמש משופרת עם אנימציות חלקות.",
+            "img": "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&h=300&fit=crop"
+        },
+        {
+            "title": "מצב כהה",
+            "desc": "כעת תוכלו לעבוד גם בשעות הערב עם מצב כהה נוח לעיניים. החלפה קלה בין מצב בהיר לכהה.",
+            "img": "https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=600&h=300&fit=crop"
+        },
+        {
+            "title": "סנכרון בענן",
+            "desc": "כל הנתונים שלכם מסונכרנים אוטומטית בענן. גישה מכל מכשיר, בכל זמן ומכל מקום.",
+            "img": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&h=300&fit=crop"
+        },
+        {
+            "title": "ביצועים משופרים",
+            "desc": "האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.",
+            "img": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop"
+        },
+        {
+            "title": "333ביצועים משופרים",
+            "desc": "האפליקציה מהירה פי 3 מהגרסה הקודמת! אופטימיזציה מלאה לחוויית שימוש חלקה.",
+            "img": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=300&fit=crop"
+        }
+    ],
+    "startDate": "2025-10-01",
+    "durationDays": 14
 }

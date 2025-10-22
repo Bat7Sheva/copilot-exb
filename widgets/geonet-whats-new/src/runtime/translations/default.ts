@@ -1,7 +1,8 @@
 export default {
-    _widgetLabel: 'geonet-cookies',
-    message1: "This website collects cookies to deliver better user experience. For moreinformation please visit ",
-    message2: "our website.",
-    message3: ""
-
+    _widgetLabel: 'geonet-whats-new',
+    whatsNewsPopupTitle: 'There are new things worth seeing',
+    forMoreInfo: 'for more information',
+    dontShowAgain: 'Do not show me this message again',
+    close: 'close',
+    whatsNewTitle: '✨ What\'s new in the app',
 }
