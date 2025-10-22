@@ -379,40 +379,81 @@ export default class Widget extends React.PureComponent<
   addCustomUploadButtonToForm = (featureFormViewModel, feature) => {
     setTimeout(() => {
       const formNode = featureFormViewModel?.domNode || document.querySelector('.esri-feature-form__form')
+      if (!formNode) return
 
-      if (formNode /*&& !formNode.querySelector('.custom-upload-btn')*/) {
+      const createAndAttachCustomBtn = (container: Element | ShadowRoot) => {
+        // don't add twice
+        if ((container as Element).querySelector('.custom-replace-attachment-btn')) return
+
         const uploadButton = document.createElement('button')
         uploadButton.innerText = '😊 העלה קובץ'
-        uploadButton.className = 'custom-upload-btn esri-button'
-        uploadButton.style.marginTop = '1em'
+        uploadButton.className = 'custom-replace-attachment-btn esri-button'
+        uploadButton.style.marginTop = '0.5em'
 
         uploadButton.onclick = async () => {
           try {
-
             const input = document.createElement('input')
             input.type = 'file'
             input.accept = '*/*'
             input.onchange = async () => {
-              const file = input.files[0]
-              if (!file) {
-                return;
-              }
-
-              const featureLayerUrl = `${feature.layer.url}/${feature.layer.layerId}`
-
-              await this.onFileChange(file, featureFormViewModel, uploadButton, feature.attributes.OBJECTID, feature.attributes?.GlobalID ?? '', featureLayerUrl, this.username);
+              const file = input.files?.[0]
+              if (!file) return
+              // try to get OBJECTID / GlobalID from the current feature if present
+              const OBJECTID = feature?.attributes?.OBJECTID ?? null
+              const GlobalID = feature?.attributes?.GlobalID ?? ''
+              const featureLayerUrl = feature?.layer ? `${feature.layer.url}/${feature.layer.layerId}` : ''
+              // pass this button as uploadButton to keep existing UI logic
+              await this.onFileChange(file, featureFormViewModel, uploadButton, OBJECTID, GlobalID, featureLayerUrl, this.username)
             }
             input.click()
-
           } catch (error) {
-            console.error('שגיאה כללית:', error);
+            console.error('שגיאה כללית:', error)
             alert('⚠️ אירעה שגיאה')
-            // uploadButton.disabled = false
-            // uploadButton.innerText = originalText
           }
         }
 
-        formNode.appendChild(uploadButton)
+        // append into the attachments container if possible, otherwise to the formNode
+        try {
+          (container as Element).appendChild(uploadButton)
+        } catch (e) {
+          formNode.appendChild(uploadButton)
+        }
+      }
+
+      // 1) Try to find esri-attachments components inside the form (they may be custom elements with shadow DOM)
+      const attachmentsEls = Array.from(formNode.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
+      let replaced = false
+      attachmentsEls.forEach(attEl => {
+        // attEl may expose a shadowRoot (open). try to use it.
+        const shadow = (attEl as any).shadowRoot as ShadowRoot | null
+        const container = shadow || attEl
+        // try to find the original add button inside the container
+        const origBtn = (container as any).querySelector?.('.esri-attachments__add-attachment-button') as HTMLElement
+        if (origBtn) {
+          // hide original and insert our button next to it
+          try { origBtn.style.display = 'none' } catch (e) {}
+          // insert our custom button in the same container (shadow or light)
+          createAndAttachCustomBtn(container)
+          replaced = true
+        } else {
+          // if shadow exists but button class is nested deeper, try a wider search inside shadow
+          if (shadow) {
+            const deeperBtn = shadow.querySelector?.('button') // fallback: first button
+            if (deeperBtn) {
+              try { deeperBtn.style.display = 'none' } catch (e) {}
+              createAndAttachCustomBtn(container)
+              replaced = true
+            }
+          }
+        }
+      })
+
+      // 2) Fallback: if no attachments element found, add custom upload button to the form (previous behavior)
+      if (!replaced) {
+        // avoid adding duplicate
+        if (!formNode.querySelector('.custom-replace-attachment-btn')) {
+          createAndAttachCustomBtn(formNode)
+        }
       }
     }, 300)
   }
