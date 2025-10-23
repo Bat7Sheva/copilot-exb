@@ -234,7 +234,7 @@ export default class Widget extends React.PureComponent<
       loading: false,
       selectionStartWorkflow: false,
 
-      // ברירת מחדל ל־MessageBox
+      // default MessageBox
       messageBoxVisible: false,
       messageBoxType: 'info',
       messageBoxTitle: '',
@@ -398,11 +398,14 @@ export default class Widget extends React.PureComponent<
 
       const createAndAttachCustomBtn = (container: Element | ShadowRoot) => {
         // don't add twice
-        if ((container as Element).querySelector('.custom-replace-attachment-btn')) return
+        if ((container as Element).querySelector('.custom-replace-attachment-btn') || document.querySelector('.custom-replace-attachment-btn')) return
 
         const uploadButton = document.createElement('button')
-        uploadButton.innerText = '😊 העלה קובץ'
-        uploadButton.className = 'custom-replace-attachment-btn esri-button'
+        // uploadButton.innerText = '😊 העלה קובץ'
+        uploadButton.innerText = this.formatMessage('addNewFile')
+        // uploadButton.innerText = this.formatMessage('changeFile')
+        uploadButton.className = 'custom-replace-attachment-btn esri-button esri-button--tertiary'
+        // esri-button esri-button--tertiary esri-attachments__add-attachment-button
         uploadButton.style.marginTop = '0.5em'
 
         uploadButton.onclick = async () => {
@@ -411,7 +414,7 @@ export default class Widget extends React.PureComponent<
             input.type = 'file'
             input.accept = '*/*'
             input.onchange = async () => {
-              const file = input.files?.[0]
+              const file = input.files[0]
               if (!file) return
               // try to get OBJECTID / GlobalID from the current feature if present
               const OBJECTID = feature?.attributes?.OBJECTID ?? null
@@ -436,14 +439,15 @@ export default class Widget extends React.PureComponent<
       }
 
       // 1) Try to find esri-attachments components inside the form (they may be custom elements with shadow DOM)
-      const attachmentsEls = Array.from(formNode.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
+      const attachmentsEls = Array.from(document.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
+      // const attachmentsEls = Array.from(formNode.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
       let replaced = false
       attachmentsEls.forEach(attEl => {
         // attEl may expose a shadowRoot (open). try to use it.
         const shadow = (attEl as any).shadowRoot as ShadowRoot | null
         const container = shadow || attEl
         // try to find the original add button inside the container
-        const origBtn = (container as any).querySelector?.('.esri-attachments__add-attachment-button') as HTMLElement
+        const origBtn = (container as any).querySelector?.('.esri-attachments__add-attachment-button') as HTMLElement //?? (container as any).querySelector?.('.esri-attachments__file-label') as HTMLElement
         if (origBtn) {
           // hide original and insert our button next to it
           try { origBtn.style.display = 'none' } catch (e) {}
@@ -491,7 +495,6 @@ export default class Widget extends React.PureComponent<
     try {
       const response = await fetch(this.props.config.uploadFileUrl, UploadOptions);
 
-      // נסה לפרסר JSON (יכול להיכשל)
       let body: any = null;
       try {
         body = await response.json();
@@ -1604,7 +1607,6 @@ export default class Widget extends React.PureComponent<
               deleteEnabled: true,
               attributeUpdatesEnabled: true,
               geometryUpdatesEnabled: true,
-              allowAttachments: false
             })
           } else if (fullEditingPrivileges && !layerEditingEnabled) {
             configLayerInfos.push({
@@ -1613,7 +1615,6 @@ export default class Widget extends React.PureComponent<
               addEnabled: false,
               updateEnabled: false,
               deleteEnabled: false,
-              allowAttachments: false,
             })
           } else {
             configLayerInfos.push({
@@ -1625,7 +1626,6 @@ export default class Widget extends React.PureComponent<
               deleteEnabled: deleteRecords,
               attributeUpdatesEnabled: updateAttributes,
               geometryUpdatesEnabled: updateGeometries,
-              allowAttachments: false
             })
           }
           // update dataSource after edit
