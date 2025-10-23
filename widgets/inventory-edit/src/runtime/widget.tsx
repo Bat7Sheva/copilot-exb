@@ -491,22 +491,40 @@ export default class Widget extends React.PureComponent<
     try {
       const response = await fetch(this.props.config.uploadFileUrl, UploadOptions);
 
+      // נסה לפרסר JSON (יכול להיכשל)
+      let body: any = null;
+      try {
+        body = await response.json();
+      } catch (e) {
+        body = null;
+      }
+
+      // החזר תמיד אובייקט שמתאר את המצב במקום לזרוק עבור HTTP non-OK
       if (!response.ok) {
-        throw new Error(UploadFileError.FailedToUpload);
-      }
-      const res = await response.json();
-
-      if (res.isOk == false && res.error != null && res.error != "") {
-        throw new Error(res.error);
-      } else if (res.isOk == true && res.error != null && res.error != "") {
-        throw new Error(res.error);
-      }
-      else if (res.isOk == true && (res.error == "" || res.error == null)) {
-        return res.file64
+        const msg = body && (body.error || body.message) ? (body.error || body.message) : UploadFileError.FailedToUpload;
+        return { ok: false, body: { error: String(msg) } };
       }
 
+      // אם יש מבנה עם isOk, השתמש בו להכרעה
+      if (body && (typeof body.isOk !== 'undefined')) {
+        if (!body.isOk) {
+          const msg = body.error || body.message || UploadFileError.FailedToUpload;
+          return { ok: false, body: { error: String(msg), raw: body } };
+        }
+        return { ok: true, body };
+      }
+
+      // אם אין isOk אבל יש file64
+      if (body && typeof body.file64 !== 'undefined') {
+        return { ok: true, body };
+      }
+
+      // HTTP OK אך מבנה לא צפוי - החזר ok:true עם body (או null)
+      return { ok: true, body };
     } catch (err) {
-      throw new Error(err);
+      // תקלה ברשת/שגיאת קוד - החזר כמצב כושל עם הודעה
+      const msg = err && (err.message || String(err)) ? (err.message || String(err)) : UploadFileError.FailedToUpload;
+      return { ok: false, body: { error: String(msg) } };
     }
   }
 
@@ -521,13 +539,22 @@ export default class Widget extends React.PureComponent<
       const fileBase64 = await this.convertToBase64(file);
 
       const res = await this.uploadFile(myFileId, fileBase64, fileInfo, OBJECTID, GlobalID, featureUrl, username);
-      if (res) {
-        // תצוגת חיווי הצלחה באמצעות MessageBox במקום alert
-        this.showMessageBox('success', `הקובץ ${fileInfo.name} נוסף בהצלחה!`, '', 3000)
+
+      // עכשיו res תמיד יתקבל (אובייקט עם ok ו body)
+      if (res && res.ok) {
+        // הצלחה - השתמש ב‑body להודעה מפורטת אם יש
+        const body = res.body || {}
+        const successMsg = body && body.fileName ? `הקובץ ${body.fileName} נוסף בהצלחה!` : `הקובץ ${fileInfo.name} נוסף בהצלחה!`
+        this.showMessageBox('success', successMsg, '', 3000)
+      } else {
+        // כישלון - הצג הודעת שגיאה מתוך ה‑body אם יש
+        const errBody = res?.body || {}
+        const errMsg = errBody.error || errBody.message || 'שגיאה בהעלאת קובץ'
+        this.showMessageBox('error', 'שגיאה בהעלאה', String(errMsg), undefined)
       }
     } catch (error) {
+      // במקרה הקיצוני שבו משהו נשבר
       console.error('שגיאה בהעלאה:', error);
-      // הצגת שגיאה ב־MessageBox. משתמשים ב־message אם קיים, אחרת stringify
       const errMsg = (error && (error.message || error.toString())) || 'שגיאה בהעלאה'
       this.showMessageBox('error', 'שגיאה בהעלאה', errMsg, undefined)
     }
