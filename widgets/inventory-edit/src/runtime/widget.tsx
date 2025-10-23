@@ -396,16 +396,14 @@ export default class Widget extends React.PureComponent<
       const formNode = featureFormViewModel?.domNode || document.querySelector('.esri-feature-form__form')
       if (!formNode) return
 
-      const createAndAttachCustomBtn = (container: Element | ShadowRoot) => {
-        // don't add twice
-        if ((container as Element).querySelector('.custom-replace-attachment-btn') || document.querySelector('.custom-replace-attachment-btn')) return
+      const createAndAttachCustomBtn = (container: Element | ShadowRoot, btnClass: string, btnText: string) => {
+        // don't add twice (check for either custom class anywhere)
+        if ((container as Element).querySelector('.custom-replace-attachment-btn, .custom-replace-filelabel-btn') ||
+            document.querySelector('.custom-replace-attachment-btn, .custom-replace-filelabel-btn')) return
 
         const uploadButton = document.createElement('button')
-        // uploadButton.innerText = '😊 העלה קובץ'
-        uploadButton.innerText = this.formatMessage('addNewFile')
-        // uploadButton.innerText = this.formatMessage('changeFile')
-        uploadButton.className = 'custom-replace-attachment-btn esri-button esri-button--tertiary'
-        // esri-button esri-button--tertiary esri-attachments__add-attachment-button
+        uploadButton.innerText = btnText
+        uploadButton.className = `${btnClass} esri-button esri-button--tertiary`
         uploadButton.style.marginTop = '0.5em'
 
         uploadButton.onclick = async () => {
@@ -416,11 +414,9 @@ export default class Widget extends React.PureComponent<
             input.onchange = async () => {
               const file = input.files[0]
               if (!file) return
-              // try to get OBJECTID / GlobalID from the current feature if present
               const OBJECTID = feature?.attributes?.OBJECTID ?? null
               const GlobalID = feature?.attributes?.GlobalID ?? ''
               const featureLayerUrl = feature?.layer ? `${feature.layer.url}/${feature.layer.layerId}` : ''
-              // pass this button as uploadButton to keep existing UI logic
               await this.onFileChange(file, featureFormViewModel, uploadButton, OBJECTID, GlobalID, featureLayerUrl, this.username)
             }
             input.click()
@@ -430,7 +426,6 @@ export default class Widget extends React.PureComponent<
           }
         }
 
-        // append into the attachments container if possible, otherwise to the formNode
         try {
           (container as Element).appendChild(uploadButton)
         } catch (e) {
@@ -438,40 +433,41 @@ export default class Widget extends React.PureComponent<
         }
       }
 
-      // 1) Try to find esri-attachments components inside the form (they may be custom elements with shadow DOM)
+      // find attachments elements (global search to catch shadow hosts)
       const attachmentsEls = Array.from(document.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
-      // const attachmentsEls = Array.from(formNode.querySelectorAll('esri-attachments, .esri-attachments')) as Element[]
       let replaced = false
       attachmentsEls.forEach(attEl => {
-        // attEl may expose a shadowRoot (open). try to use it.
         const shadow = (attEl as any).shadowRoot as ShadowRoot | null
         const container = shadow || attEl
-        // try to find the original add button inside the container
-        const origBtn = (container as any).querySelector?.('.esri-attachments__add-attachment-button') as HTMLElement //?? (container as any).querySelector?.('.esri-attachments__file-label') as HTMLElement
+
+        // try primary add-attachment button
+        const origBtn = (container as any).querySelector?.('.esri-attachments__add-attachment-button') as HTMLElement
+        // try alternative file-label element (separate control)
+        const fileLabel = (container as any).querySelector?.('.esri-attachments__file-label') as HTMLElement
+
         if (origBtn) {
-          // hide original and insert our button next to it
           try { origBtn.style.display = 'none' } catch (e) {}
-          // insert our custom button in the same container (shadow or light)
-          createAndAttachCustomBtn(container)
+          createAndAttachCustomBtn(container, 'custom-replace-attachment-btn', this.formatMessage('addNewFile'))
           replaced = true
-        } else {
-          // if shadow exists but button class is nested deeper, try a wider search inside shadow
-          if (shadow) {
-            const deeperBtn = shadow.querySelector?.('button') // fallback: first button
-            if (deeperBtn) {
-              try { deeperBtn.style.display = 'none' } catch (e) {}
-              createAndAttachCustomBtn(container)
-              replaced = true
-            }
+        } else if (fileLabel) {
+          try { fileLabel.style.display = 'none' } catch (e) {}
+          createAndAttachCustomBtn(container, 'custom-replace-filelabel-btn', this.formatMessage('changeFile'))
+          replaced = true
+        } else if (shadow) {
+          // fallback: any button inside shadow -> replace first button but mark as attachment-btn
+          const deeperBtn = shadow.querySelector?.('button')
+          if (deeperBtn) {
+            try { (deeperBtn as HTMLElement).style.display = 'none' } catch (e) {}
+            createAndAttachCustomBtn(container, 'custom-replace-attachment-btn', this.formatMessage('addNewFile'))
+            replaced = true
           }
         }
       })
 
-      // 2) Fallback: if no attachments element found, add custom upload button to the form (previous behavior)
+      // Fallback: if no attachments element found, add custom upload button to the form
       if (!replaced) {
-        // avoid adding duplicate
-        if (!formNode.querySelector('.custom-replace-attachment-btn')) {
-          createAndAttachCustomBtn(formNode)
+        if (!formNode.querySelector('.custom-replace-attachment-btn, .custom-replace-filelabel-btn')) {
+          createAndAttachCustomBtn(formNode, 'custom-replace-attachment-btn', this.formatMessage('addNewFile'))
         }
       }
     }, 300)
@@ -2185,6 +2181,11 @@ export default class Widget extends React.PureComponent<
               )
             })
           }
+        </div>
+      </div>
+    )
+  }
+}
         </div>
       </div>
     )
