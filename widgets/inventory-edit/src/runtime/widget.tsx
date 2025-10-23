@@ -59,6 +59,7 @@ import { versionManager } from '../version-manager'
 import { WarningOutlined } from 'jimu-icons/outlined/suggested/warning'
 import reactiveUtils from 'esri/core/reactiveUtils'
 import { SearchOutlined } from 'jimu-icons/outlined/editor/search'
+import MessageBox from '../../../shared-code/common-components/message-box'
 
 const editPlaceholderIcon = require('./assets/icons/placeholder-edit-geometry-empty.svg')
 const CSS = {
@@ -143,6 +144,13 @@ export interface State {
   formSubmittable: boolean
   loading: boolean
   selectionStartWorkflow: boolean
+
+  // הוספה: שדות לשליטה ב־MessageBox
+  messageBoxVisible?: boolean
+  messageBoxType?: 'error' | 'info' | 'success' | 'warning'
+  messageBoxTitle?: string
+  messageBoxContent?: string
+  messageBoxAutoClose?: number
 }
 
 
@@ -224,7 +232,14 @@ export default class Widget extends React.PureComponent<
       formChange: false,
       formSubmittable: true,
       loading: false,
-      selectionStartWorkflow: false
+      selectionStartWorkflow: false,
+
+      // ברירת מחדל ל־MessageBox
+      messageBoxVisible: false,
+      messageBoxType: 'info',
+      messageBoxTitle: '',
+      messageBoxContent: '',
+      messageBoxAutoClose: undefined
     }
     this.dsManager = DataSourceManager.getInstance()
     this.removeLayerOnce = false
@@ -507,11 +522,14 @@ export default class Widget extends React.PureComponent<
 
       const res = await this.uploadFile(myFileId, fileBase64, fileInfo, OBJECTID, GlobalID, featureUrl, username);
       if (res) {
-        alert(`הקובץ ${fileInfo.name} נוסף בהצלחה!`);
+        // תצוגת חיווי הצלחה באמצעות MessageBox במקום alert
+        this.showMessageBox('success', `הקובץ ${fileInfo.name} נוסף בהצלחה!`, '', 3000)
       }
     } catch (error) {
       console.error('שגיאה בהעלאה:', error);
-      alert('❌' + error.message);
+      // הצגת שגיאה ב־MessageBox. משתמשים ב־message אם קיים, אחרת stringify
+      const errMsg = (error && (error.message || error.toString())) || 'שגיאה בהעלאה'
+      this.showMessageBox('error', 'שגיאה בהעלאה', errMsg, undefined)
     }
     finally {
       uploadButton.disabled = false
@@ -1931,6 +1949,27 @@ export default class Widget extends React.PureComponent<
     return newEditFeatures
   }
 
+  // הוספת מתודות לשימוש חוזר להצגת וסגירת ה-MessageBox
+  showMessageBox = (type: 'error'|'info'|'success'|'warning', title: string, content?: string, autoCloseMs?: number) => {
+    this.setState({
+      messageBoxVisible: true,
+      messageBoxType: type,
+      messageBoxTitle: title,
+      messageBoxContent: content || '',
+      messageBoxAutoClose: autoCloseMs
+    })
+  }
+
+  hideMessageBox = () => {
+    this.setState({
+      messageBoxVisible: false,
+      messageBoxType: 'info',
+      messageBoxTitle: '',
+      messageBoxContent: '',
+      messageBoxAutoClose: undefined
+    })
+  }
+
   render() {
     const { activeId, editFeatures, featureFormStep, formPrivileges, formEditable, delConfirm, attrUpdating, formChange, formSubmittable, loading } = this.state
     const { id, theme, config, useDataSources, useMapWidgetIds } = this.props
@@ -2092,6 +2131,18 @@ export default class Widget extends React.PureComponent<
             {this.formatMessage('add')}
           </Button>
         }
+        {/* הצגת MessageBox לפי state */}
+        <MessageBox
+          isVisible={this.state.messageBoxVisible}
+          position='center'
+          type={this.state.messageBoxType}
+          message={this.state.messageBoxTitle}
+          subMessage={this.state.messageBoxContent}
+          isModal={this.state.messageBoxType === 'error'} // שגיאות - modal
+          closeOnOutsideClick={this.state.messageBoxType !== 'error'}
+          autoCloseAfter={this.state.messageBoxAutoClose}
+          onClose={this.hideMessageBox}
+        />
         <div className='ds-container'>
           {
             useDataSources?.map((useDs, key) => {
