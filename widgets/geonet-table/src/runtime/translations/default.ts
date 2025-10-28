@@ -11,5 +11,6 @@ export default {
   _action_addToTable_label: 'Add to table',
   fromDatePlaceHolder: 'From date',
   toDatePlaceHolder: 'To date',
-  filterByMapDelineation: 'filter by map delineation'
+  filterByMapDelineation: 'filter by map delineation',
+  undoFilterByMapDelineation: 'undo by map delineation'
 }

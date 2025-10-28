@@ -220,6 +220,9 @@ export default class Widget extends React.PureComponent<
   mapViewStationaryWatchHandle: any = null;
   debouncedApplyMapFilter: any = null;
 
+  // store the map's current where before applying selection filter so we can restore it
+  prevMapQuery: string | null = null;
+
   static mapExtraStateProps = (
     state: IMState,
     props: AllWidgetProps<IMConfig>
@@ -1790,6 +1793,7 @@ export default class Widget extends React.PureComponent<
         return;
       }
  
+      /*
       // // Use current where clause if present, otherwise default to '1=1'
       // const curQuery: any = (featureDS as QueriableDataSource).getCurrentQueryParams?.() || {};
       // const where = curQuery.where || '1=1';
@@ -1797,7 +1801,8 @@ export default class Widget extends React.PureComponent<
       // // Update datasource query with geometry - this will filter the records used by the table
       // const qParams: any = { where, geometry: extent };
       // (featureDS as QueriableDataSource).updateQueryParams(qParams, this.mapWidgetId);
- 
+     */
+
       // Also set the table's filterGeometry so FeatureTable shows the spatially filtered content
       try { (this.table as any).filterGeometry = extent; } catch (e) {}
     } catch (err) {
@@ -1932,16 +1937,87 @@ export default class Widget extends React.PureComponent<
 
   }
 
-  onShowSelection = () => {
-    const { selectQueryFlag } = this.state
+  // onShowSelection = () => {
+  //   const { selectQueryFlag } = this.state
+  //   if (selectQueryFlag) {
+  //     this.table.clearSelectionFilter()
+  //     this.resetTableExpression()
+  //   } else {
+  //     this.table.filterBySelection()
+  //   }
+  //   this.setState({ selectQueryFlag: !selectQueryFlag })
+  // }
+  // geonet region
+    onShowSelection = async () => {
+    const { selectQueryFlag, dataSource } = this.state
+ 
+    // If currently showing only selection -> turn off (show all)
     if (selectQueryFlag) {
-      this.table.clearSelectionFilter()
+      // clear table-only filter
+      this.table.clearSelectionFilter && this.table.clearSelectionFilter()
       this.resetTableExpression()
+ 
+      // Try restore previous map query (if saved), else restore datasource current where or '1=1'
+      try {
+        const restoreWhere = this.prevMapQuery ?? ((dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1')
+        await this.filterMap(restoreWhere)
+      } catch (err) {
+        console.warn('Failed to reset map filter on show all', err)
+      } finally {
+        this.prevMapQuery = null
+      }
+ 
     } else {
-      this.table.filterBySelection()
+      // Turn on: show only selected records in table and also on the map
+ 
+      // 1) save current map/table where quickly
+      try {
+        const currentLayerWhere = this.table?.layer?.definitionExpression
+        if (typeof currentLayerWhere === 'string') {
+          this.prevMapQuery = currentLayerWhere || '1=1'
+        } else {
+          this.prevMapQuery = (dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1'
+        }
+      } catch (e) {
+        this.prevMapQuery = (dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1';
+      }
+ 
+      // 2) apply table selection filter
+      this.table.filterBySelection && this.table.filterBySelection()
+ 
+      // 3) Build a WHERE clause from selected ids and apply to map layer
+      try {
+        // Prefer datasource selected ids if available
+        let selectedIds: string[] = []
+        if (dataSource && dataSource.getSelectedRecordIds) {
+          selectedIds = dataSource.getSelectedRecordIds() || []
+        }
+        // Fallback to table highlightIds if datasource not available or empty
+        if ((!selectedIds || selectedIds.length === 0) && this.table && (this.table as any).highlightIds) {
+          const h = (this.table as any).highlightIds.toArray ? (this.table as any).highlightIds.toArray() : []
+          selectedIds = (h || []).map(id => `${id}`)
+        }
+ 
+        if (selectedIds && selectedIds.length > 0) {
+          const objectIdField = this.getLayerObjectIdField()
+          // Ensure numeric ids are not quoted
+          const idsSql = selectedIds.map(id => {
+            return /^\d+$/.test(String(id)) ? String(id) : `'${String(id).replace(/'/g, "''")}'`
+          }).join(',')
+          const where = `${objectIdField} IN (${idsSql})`
+          await this.filterMap(where)
+        } else {
+          // no selection -> apply a noop (keep previous query)
+          await this.filterMap(this.prevMapQuery || '1=1')
+        }
+      } catch (err) {
+        console.warn('Failed to apply map filter for selection', err)
+      }
     }
+ 
     this.setState({ selectQueryFlag: !selectQueryFlag })
   }
+  // geonet region end
 
   resetTableExpression = () => {
     const { dataSource } = this.state
@@ -2414,7 +2490,7 @@ export default class Widget extends React.PureComponent<
           size='sm'
           onClick={this.onFilterByMapDelineation}
           icon
-          title={this.formatMessage('filterByMapDelineation')}
+          title={ this.hasFilterByMapDelineation ? this.formatMessage('undoFilterByMapDelineation') : this.formatMessage('filterByMapDelineation') }
           className={ this.hasFilterByMapDelineation ? 'clicked-btn' : ''}
         >
           <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt={this.formatMessage('filterByMapDelineation')} />
@@ -2785,8 +2861,8 @@ export default class Widget extends React.PureComponent<
             </div>
             <div
               className={`${arrangeType === TableArrangeType.Tabs
-                ? 'horizontal-render-con'
-                : 'dropdown-render-con'
+                  ? 'horizontal-render-con'
+                  : 'dropdown-render-con'
                 }`}
             >
               {searchOn && this.renderSearchTools(curLayer?.searchHint)}

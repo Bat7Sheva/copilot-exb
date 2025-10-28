@@ -16,8 +16,10 @@ System.register([],
                     fromDatePlaceHolder: 'מתאריך',
                     toDatePlaceHolder: 'עד תאריך',
                     clearFilter: 'נקה סינון',
-                    filterByMapDelineation: 'סינון לפי תיחום מפה'
+                    filterByMapDelineation: 'סינון לפי תיחום מפה',
+                    undoFilterByMapDelineation: 'בטל סינון לפי תיחום מפה',
                 })
             }
         }
-    }));
+    })
+);
