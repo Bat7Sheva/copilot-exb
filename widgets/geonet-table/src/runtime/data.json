@@ -1,0 +1,42 @@
+ 
+{
+    "StateId": "7993667f-d537-43b5-9a6b-9cdfb32c02be",
+    "UserName": "SaraB@PWD-COMP",
+    "StateData": {
+        "map": {
+            "extent": {
+                "spatialReference": {
+                    "latestWkid": 2039,
+                    "wkid": 2039
+                },
+                "xmin": 193849.94979340502,
+                "ymin": 628206.9581130056,
+                "xmax": 210283.2113230271,
+                "ymax": 645080.8881082265
+            }
+        },
+        "layerInfos": [
+            {
+                "url": "https://geo-app-qa.pwd.comp/server/rest/services/MAAKAV_TIHNUNI/MapServer/1",
+                "title": "חלקות",
+                "isVisible": true,
+                "opacity": 1,
+                "tableData": {
+                    "query": "1=1",
+                    "fields": ["OBJECTID", "GUSH_NUM", "PARCEL", "REGION_NAM"]
+                }
+            },
+            {
+                "url": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET1/MapServer/0",
+                "title": "פרויקטים נתיבי ישראל - לפי אגף",
+                "isVisible": true,
+                "opacity": 1
+            }
+        ]
+    },
+    "LastUpdated": "2025-10-26T11:18:56.93",
+    "CreationDate": "2025-10-23T09:01:00.823",
+    "IsDefault": true,
+    "StateAlias": "test"
+}
+ 

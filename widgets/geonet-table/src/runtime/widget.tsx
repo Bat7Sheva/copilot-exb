@@ -554,13 +554,34 @@ export default class Widget extends React.PureComponent<
         'Editor',
         'GlobalID'
       ];
-      const initTableFields = allFields.filter(
-        item => !defaultInvisible.includes(item.jimuName)
-      ).map(ele => ({ ...ele, visible: true }));
+
+      // --- שינוי כאן: סינון ומיון לפי tableData.fields אם קיים ---
+      let displayFieldsArr: string[] = [];
+      if (entry?.tableData?.fields && Array.isArray(entry.tableData.fields)) {
+        displayFieldsArr = entry.tableData.fields;
+      } else if (entry?.tableData?.displayFields && Array.isArray(entry.tableData.displayFields)) {
+        displayFieldsArr = entry.tableData.displayFields;
+      }
+
+      let initTableFields;
+      if (displayFieldsArr.length > 0) {
+        // סינון ומיון לפי displayFieldsArr
+        initTableFields = displayFieldsArr
+          .map(fieldName => allFields.find(f => f.jimuName === fieldName))
+          .filter(f => !!f && !defaultInvisible.includes(f.jimuName))
+          .map(ele => ({ ...ele, visible: true }));
+      } else {
+        // ברירת מחדל: כל השדות פרט ל-defaultInvisible
+        initTableFields = allFields.filter(
+          item => !defaultInvisible.includes(item.jimuName)
+        ).map(ele => ({ ...ele, visible: true }));
+      }
+      // --- סוף שינוי ---
+
       const newItemId = `DaTable-${ds.id}`;
       const daLayerItem = {
         id: newItemId,
-        name: entry.name || mapLayer.title || url,
+        name: entry.name || entry.title || mapLayer.title || url,
         allFields,
         tableFields: initTableFields,
         enableAttachements: false,
@@ -1755,7 +1776,7 @@ export default class Widget extends React.PureComponent<
 
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
