@@ -1246,14 +1246,9 @@ export default class Widget extends React.PureComponent<
         })
         // construct tableTemplate
         const layerDefinition = (dataSource as FeatureLayerDataSource)?.getLayerDefinition()
-        const { allFields } = this.getFieldsFromDatasource()
-        const curColumns = tableShowColumns ? tableShowColumns.map(col => { return { jimuName: col.value } }) : curLayerConfig.tableFields.filter(item => item.visible)
-        const invisibleColumns = minusArray(allFields, curColumns).map(item => {
-          return item.jimuName
-        })
-        // For dataview, need to merge its sorting information into default
+        // --- שינוי כאן: השתמש רק ב-curLayerConfig.tableFields לסדר וסינון ---
         let tableTemplate: __esri.TableTemplate
-        if (isHonorWebmap) { //  && dataSource.isDataView && dataSource?.dataViewId !== OUTPUT_DATA_VIEW_ID
+        if (isHonorWebmap) {
           const popupInfo = (dataSource as FeatureLayerDataSource)?.getPopupInfo()
           const popupAllFieldInfos = popupInfo?.fieldInfos || []
           // use schemaFields to filter used fields, some field is special and invisible in schema
@@ -1285,19 +1280,22 @@ export default class Widget extends React.PureComponent<
                 }
               })
             })
-        } else if (!isHonorWebmap) {
+        } else {
+          // השתמש רק ב-curLayerConfig.tableFields
           tableTemplate = new this.TableTemplate({
-            columnTemplates: curLayerConfig.tableFields.map(item => {
-              const itemKey = item.jimuName || item.name
-              const newItem = allFieldsSchema?.fields?.[itemKey]
-              return {
-                fieldName: itemKey,
-                label: newItem?.alias,
-                ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
-                visible: invisibleColumns.indexOf(itemKey) < 0,
-                ...(sortFields[itemKey] ? sortFields[itemKey] : {})
-              }
-            })
+            columnTemplates: curLayerConfig.tableFields
+              .filter(item => item.visible) // רק שדות מוצגים
+              .map(item => {
+                const itemKey = item.jimuName || item.name
+                const newItem = allFieldsSchema?.fields?.[itemKey]
+                return {
+                  fieldName: itemKey,
+                  label: newItem?.alias || item.alias || item.name,
+                  ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
+                  visible: true,
+                  ...(sortFields[itemKey] ? sortFields[itemKey] : {})
+                }
+              })
           })
         }
         // check layer capabilities for delete operation
@@ -1341,11 +1339,12 @@ export default class Widget extends React.PureComponent<
         const container = document.createElement('div')
         container.className = `table-container-${id}`
         this.refs.tableContainer.appendChild(container)
+        // השתמש ב-tableTemplate שנבנה:
         this.table = new this.FeatureTable({
           layer: featureLayer,
           pageSize: 50,
           container: container,
-          // tableTemplate,
+          tableTemplate, // <-- הוסף כאן את ה-tableTemplate
           // multiSortEnabled: true,
           // attachmentsEnabled: curLayerConfig.enableAttachements,
           // editingEnabled: editable,
@@ -2989,4 +2988,5 @@ export default class Widget extends React.PureComponent<
       </div>
     )
   }
+}
 }
