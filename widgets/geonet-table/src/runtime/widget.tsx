@@ -554,34 +554,13 @@ export default class Widget extends React.PureComponent<
         'Editor',
         'GlobalID'
       ];
-
-      // --- שינוי כאן: סינון ומיון לפי tableData.fields אם קיים ---
-      let displayFieldsArr: string[] = [];
-      if (entry?.tableData?.fields && Array.isArray(entry.tableData.fields)) {
-        displayFieldsArr = entry.tableData.fields;
-      } else if (entry?.tableData?.displayFields && Array.isArray(entry.tableData.displayFields)) {
-        displayFieldsArr = entry.tableData.displayFields;
-      }
-
-      let initTableFields;
-      if (displayFieldsArr.length > 0) {
-        // סינון ומיון לפי displayFieldsArr
-        initTableFields = displayFieldsArr
-          .map(fieldName => allFields.find(f => f.jimuName === fieldName))
-          .filter(f => !!f && !defaultInvisible.includes(f.jimuName))
-          .map(ele => ({ ...ele, visible: true }));
-      } else {
-        // ברירת מחדל: כל השדות פרט ל-defaultInvisible
-        initTableFields = allFields.filter(
-          item => !defaultInvisible.includes(item.jimuName)
-        ).map(ele => ({ ...ele, visible: true }));
-      }
-      // --- סוף שינוי ---
-
+      const initTableFields = allFields.filter(
+        item => !defaultInvisible.includes(item.jimuName)
+      ).map(ele => ({ ...ele, visible: true }));
       const newItemId = `DaTable-${ds.id}`;
       const daLayerItem = {
         id: newItemId,
-        name: entry.name || entry.title || mapLayer.title || url,
+        name: entry.name || mapLayer.title || url,
         allFields,
         tableFields: initTableFields,
         enableAttachements: false,
@@ -669,7 +648,7 @@ export default class Widget extends React.PureComponent<
   }
 
   getFieldsFromDatasource = () => {
-    const { config } = this.props
+    const { config, layerList } = this.props
     const { layersConfig } = config
     const { activeTabId } = this.state
     const daLayersConfig = this.getDataActionTable()
@@ -694,6 +673,7 @@ export default class Widget extends React.PureComponent<
     if (tableFields?.length > 50) {
       tableFields = tableFields.slice(0, 50)
     }
+    console.log('getFieldsFromDatasource :)');
     return { allFields, tableFields }
   }
 
@@ -1178,7 +1158,7 @@ export default class Widget extends React.PureComponent<
 
   getLayerAndNewTable = (dataSource: QueriableDataSource, curLayerConfig: LayersConfig, dataRecords: DataRecord[]) => {
     const { tableShowColumns, selectQueryFlag } = this.state
-    const { id } = this.props
+    const { id, layerList } = this.props
     const newId = this.currentRequestId + 1
     this.currentRequestId++
     const isSceneLayer = dataSource?.type === AllDataSourceTypes.SceneLayer
@@ -1246,9 +1226,17 @@ export default class Widget extends React.PureComponent<
         })
         // construct tableTemplate
         const layerDefinition = (dataSource as FeatureLayerDataSource)?.getLayerDefinition()
-        // --- שינוי כאן: השתמש רק ב-curLayerConfig.tableFields לסדר וסינון ---
+        const { allFields } = this.getFieldsFromDatasource()
+        const curColumns = tableShowColumns ? tableShowColumns.map(col => { return { jimuName: col.value } }) : curLayerConfig.tableFields.filter(item => item.visible)
+
+        console.log('1', tableShowColumns);
+        
+        const invisibleColumns = minusArray(allFields, curColumns).map(item => {
+          return item.jimuName
+        })
+        // For dataview, need to merge its sorting information into default
         let tableTemplate: __esri.TableTemplate
-        if (isHonorWebmap) {
+        if (isHonorWebmap) { //  && dataSource.isDataView && dataSource?.dataViewId !== OUTPUT_DATA_VIEW_ID
           const popupInfo = (dataSource as FeatureLayerDataSource)?.getPopupInfo()
           const popupAllFieldInfos = popupInfo?.fieldInfos || []
           // use schemaFields to filter used fields, some field is special and invisible in schema
@@ -1280,22 +1268,21 @@ export default class Widget extends React.PureComponent<
                 }
               })
             })
-        } else {
-          // השתמש רק ב-curLayerConfig.tableFields
+        } else if (!isHonorWebmap) {
           tableTemplate = new this.TableTemplate({
-            columnTemplates: curLayerConfig.tableFields
-              .filter(item => item.visible) // רק שדות מוצגים
-              .map(item => {
-                const itemKey = item.jimuName || item.name
-                const newItem = allFieldsSchema?.fields?.[itemKey]
-                return {
-                  fieldName: itemKey,
-                  label: newItem?.alias || item.alias || item.name,
-                  ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
-                  visible: true,
-                  ...(sortFields[itemKey] ? sortFields[itemKey] : {})
-                }
-              })
+            columnTemplates: curLayerConfig.tableFields.map(item => {
+              const itemKey = item.jimuName || item.name
+              const newItem = allFieldsSchema?.fields?.[itemKey]
+              return {
+                fieldName: itemKey,
+                label: newItem?.alias,
+                ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
+                visible: invisibleColumns.indexOf(itemKey) < 0,
+                ...(sortFields[itemKey] ? sortFields[itemKey] : {})
+              }
+              console.log('2');
+
+            })
           })
         }
         // check layer capabilities for delete operation
@@ -1339,12 +1326,11 @@ export default class Widget extends React.PureComponent<
         const container = document.createElement('div')
         container.className = `table-container-${id}`
         this.refs.tableContainer.appendChild(container)
-        // השתמש ב-tableTemplate שנבנה:
         this.table = new this.FeatureTable({
           layer: featureLayer,
           pageSize: 50,
           container: container,
-          tableTemplate, // <-- הוסף כאן את ה-tableTemplate
+          // tableTemplate,
           // multiSortEnabled: true,
           // attachmentsEnabled: curLayerConfig.enableAttachements,
           // editingEnabled: editable,
@@ -1775,7 +1761,7 @@ export default class Widget extends React.PureComponent<
 
   onCleanFilter = async () => {
     this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;;
+    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -2252,13 +2238,40 @@ export default class Widget extends React.PureComponent<
 
   getInitFields = () => {
     const { activeTabId, dataSource } = this.state
-    const { config } = this.props
+    const { config, layerList } = this.props
     const { layersConfig } = config
     // data-action Table
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const curLayer = allLayersConfig.find(item => item.id === activeTabId)
     const { tableFields, allFields, layerHonorMode } = curLayer
+    // let initTableFields;
+    // if(layerList && layerList.length > 0 && curLayer.dataActionDataSource.url){
+    //   const curLayerUrl = curLayer.dataActionDataSource.url;
+    //   const layer = layerList.find(x=>x.url == curLayerUrl);
+    //   if(layer /*&& layer.tableData && layer.tableData.displayFields*/) {
+    //       // tableFields = tableFields.filter(x=> layer.tableData.displayFields.includes(x.name))
+    //       const displayFields =  ['GUSH_NUM', 'PARCEL', 'LEGAL_AREA', 'STATUS_TEX', 'LOCALITY_N', 'REG_MUN_NA', 'COUNTY_NAM']
+    //       initTableFields = tableFields.filter(
+    //         item => displayFields.includes(item.jimuName))
+    //         .map(ele => ({ ...ele, visible: true }))
+    //         // .map(x=> x.visible = false)
+
+    //   // const initTableFields = allFields.filter(
+    //   //   item => !defaultInvisible.includes(item.jimuName)
+    //   //    && (displayFields.length === 0 ||  displayFields.includes(item.jimuName))
+    //   // ).map(ele => ({ ...ele, visible: true }));
+
+    //   }
+
+
+    //   //למצוא את השכבה לפי URL
+    //   // לבדוק אם יש נתוניםעל השדות
+    //   // לסננן.
+    // }
+
+
+
     const initSelectTableFields: ClauseValuePair[] = []
     // honor layer settings
     const isHonorWebmap = layerHonorMode === LayerHonorModeType.Webmap
@@ -2294,6 +2307,8 @@ export default class Widget extends React.PureComponent<
         ? this.table.showColumn(item.value)
         : this.table.hideColumn(item.value)
     })
+    console.log('tableShowColumns! :)');
+    
     this.setState({ tableShowColumns: valuePairs })
   }
 
@@ -2988,5 +3003,4 @@ export default class Widget extends React.PureComponent<
       </div>
     )
   }
-}
 }
