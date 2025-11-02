@@ -653,9 +653,7 @@ export default class Widget extends React.PureComponent<
     const { activeTabId } = this.state
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
-    const curLayer = allLayersConfig
-      .find(item => item.id === activeTabId)
-    // 'allFields' need recalculate(chart output ds), if dataActionDataSource exists, use it
+    const curLayer = allLayersConfig.find(item => item.id === activeTabId)
     const selectedDs = curLayer?.dataActionDataSource || this.dsManager.getDataSource(curLayer.useDataSource?.dataSourceId)
     const allFieldsSchema = selectedDs?.getSchema()
     const allFields = allFieldsSchema?.fields ? Object.values(allFieldsSchema?.fields) : []
@@ -666,9 +664,24 @@ export default class Widget extends React.PureComponent<
       'Editor',
       'GlobalID'
     ]
-    let tableFields = allFields.filter(
-      item => !defaultInvisible.includes(item.jimuName)
-    )
+    // --- שינוי: סינון לפי fields/displayFields מתוך layerList ---
+    let displayFieldsArr: string[] = [];
+    let layerUrl = curLayer?.dataActionDataSource?.url || curLayer?.useDataSource?.url;
+    if (!layerUrl && selectedDs?.url) layerUrl = selectedDs.url;
+    const layerEntry = layerList?.find(l => l.url === layerUrl);
+    if (layerEntry?.tableData?.fields && Array.isArray(layerEntry.tableData.fields)) {
+      displayFieldsArr = layerEntry.tableData.fields;
+    } else if (layerEntry?.tableData?.displayFields && Array.isArray(layerEntry.tableData.displayFields)) {
+      displayFieldsArr = layerEntry.tableData.displayFields;
+    }
+    let tableFields;
+    if (displayFieldsArr.length > 0) {
+      tableFields = displayFieldsArr
+        .map(fieldName => allFields.find(f => f.jimuName === fieldName))
+        .filter(f => !!f && !defaultInvisible.includes(f.jimuName));
+    } else {
+      tableFields = allFields.filter(item => !defaultInvisible.includes(item.jimuName));
+    }
     // If there are too many columns, only the first 50 columns will be displayed by default
     if (tableFields?.length > 50) {
       tableFields = tableFields.slice(0, 50)
@@ -1226,17 +1239,9 @@ export default class Widget extends React.PureComponent<
         })
         // construct tableTemplate
         const layerDefinition = (dataSource as FeatureLayerDataSource)?.getLayerDefinition()
-        const { allFields } = this.getFieldsFromDatasource()
-        const curColumns = tableShowColumns ? tableShowColumns.map(col => { return { jimuName: col.value } }) : curLayerConfig.tableFields.filter(item => item.visible)
-
-        console.log('1', tableShowColumns);
-        
-        const invisibleColumns = minusArray(allFields, curColumns).map(item => {
-          return item.jimuName
-        })
-        // For dataview, need to merge its sorting information into default
+        // --- שינוי: בנה את tableTemplate רק מהשדות שמופיעים ב-curLayerConfig.tableFields ---
         let tableTemplate: __esri.TableTemplate
-        if (isHonorWebmap) { //  && dataSource.isDataView && dataSource?.dataViewId !== OUTPUT_DATA_VIEW_ID
+        if (isHonorWebmap) {
           const popupInfo = (dataSource as FeatureLayerDataSource)?.getPopupInfo()
           const popupAllFieldInfos = popupInfo?.fieldInfos || []
           // use schemaFields to filter used fields, some field is special and invisible in schema
@@ -1268,22 +1273,30 @@ export default class Widget extends React.PureComponent<
                 }
               })
             })
-        } else if (!isHonorWebmap) {
+        } else {
           tableTemplate = new this.TableTemplate({
-            columnTemplates: curLayerConfig.tableFields.map(item => {
-              const itemKey = item.jimuName || item.name
-              const newItem = allFieldsSchema?.fields?.[itemKey]
-              return {
-                fieldName: itemKey,
-                label: newItem?.alias,
-                ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
-                visible: invisibleColumns.indexOf(itemKey) < 0,
-                ...(sortFields[itemKey] ? sortFields[itemKey] : {})
-              }
-              console.log('2');
-
-            })
+            columnTemplates: curLayerConfig.tableFields
+              .filter(item => item.visible)
+              .map(item => {
+                const itemKey = item.jimuName || item.name
+                const newItem = allFieldsSchema?.fields?.[itemKey]
+                return {
+                  fieldName: itemKey,
+                  label: newItem?.alias || item.alias || item.name,
+                  editable: editable ? this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority : false,
+                  visible: true,
+                  ...(sortFields[itemKey] ? sortFields[itemKey] : {})
+                }
+              })
           })
+          // --- סנכרון tableShowColumns לסטייט ---
+          const columnsForState = curLayerConfig.tableFields
+            .filter(item => item.visible)
+            .map(item => ({
+              value: item.name,
+              label: item.alias || item.name
+            }))
+          this.setState({ tableShowColumns: columnsForState })
         }
         // check layer capabilities for delete operation
         const capabilities = layerDefinition?.capabilities
@@ -1330,7 +1343,7 @@ export default class Widget extends React.PureComponent<
           layer: featureLayer,
           pageSize: 50,
           container: container,
-          // tableTemplate,
+          tableTemplate, // חשוב! כך יוצגו רק השדות שבחרת
           // multiSortEnabled: true,
           // attachmentsEnabled: curLayerConfig.enableAttachements,
           // editingEnabled: editable,
@@ -1762,6 +1775,8 @@ export default class Widget extends React.PureComponent<
   onCleanFilter = async () => {
     this.resetTableExpression();
     this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+
+
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
