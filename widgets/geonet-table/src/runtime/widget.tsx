@@ -648,12 +648,14 @@ export default class Widget extends React.PureComponent<
   }
 
   getFieldsFromDatasource = () => {
-    const { config, layerList } = this.props
+    const { config } = this.props
     const { layersConfig } = config
     const { activeTabId } = this.state
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
-    const curLayer = allLayersConfig.find(item => item.id === activeTabId)
+    const curLayer = allLayersConfig
+      .find(item => item.id === activeTabId)
+    // 'allFields' need recalculate(chart output ds), if dataActionDataSource exists, use it
     const selectedDs = curLayer?.dataActionDataSource || this.dsManager.getDataSource(curLayer.useDataSource?.dataSourceId)
     const allFieldsSchema = selectedDs?.getSchema()
     const allFields = allFieldsSchema?.fields ? Object.values(allFieldsSchema?.fields) : []
@@ -664,29 +666,13 @@ export default class Widget extends React.PureComponent<
       'Editor',
       'GlobalID'
     ]
-    // --- שינוי: סינון לפי fields/displayFields מתוך layerList ---
-    let displayFieldsArr: string[] = [];
-    let layerUrl = curLayer?.dataActionDataSource?.url || curLayer?.useDataSource?.url;
-    if (!layerUrl && selectedDs?.url) layerUrl = selectedDs.url;
-    const layerEntry = layerList?.find(l => l.url === layerUrl);
-    if (layerEntry?.tableData?.fields && Array.isArray(layerEntry.tableData.fields)) {
-      displayFieldsArr = layerEntry.tableData.fields;
-    } else if (layerEntry?.tableData?.displayFields && Array.isArray(layerEntry.tableData.displayFields)) {
-      displayFieldsArr = layerEntry.tableData.displayFields;
-    }
-    let tableFields;
-    if (displayFieldsArr.length > 0) {
-      tableFields = displayFieldsArr
-        .map(fieldName => allFields.find(f => f.jimuName === fieldName))
-        .filter(f => !!f && !defaultInvisible.includes(f.jimuName));
-    } else {
-      tableFields = allFields.filter(item => !defaultInvisible.includes(item.jimuName));
-    }
+    let tableFields = allFields.filter(
+      item => !defaultInvisible.includes(item.jimuName)
+    )
     // If there are too many columns, only the first 50 columns will be displayed by default
     if (tableFields?.length > 50) {
       tableFields = tableFields.slice(0, 50)
     }
-    console.log('getFieldsFromDatasource :)');
     return { allFields, tableFields }
   }
 
@@ -1169,9 +1155,29 @@ export default class Widget extends React.PureComponent<
     return isAdmin || isOwner || isInUpdatedGroup
   }
 
+  loadTableColumnByState = ( curLayerConfig: LayersConfig) => {
+
+    const { layerList } = this.props;
+    if(layerList && layerList.length > 0){
+      const curLayerUrl = curLayerConfig.dataActionDataSource.url;
+      const layer = layerList.find(x=>x.url == curLayerUrl);
+      if(layer /*&& layer.tableData && layer.tableData.displayFields*/) {
+        const displayFields =  ['GUSH_NUM', 'PARCEL', 'LEGAL_AREA', 'STATUS_TEX', 'LOCALITY_N', 'REG_MUN_NA', 'COUNTY_NAM'];
+        const columnsForState = curLayerConfig.tableFields
+          .filter(f => displayFields.includes(f.jimuName))
+          .map(item => ({
+            value: item.name,
+            label: item.alias || item.name
+          }));
+
+          this.onValueChangeFromRuntime(columnsForState);
+      }
+    }
+  }
+
   getLayerAndNewTable = (dataSource: QueriableDataSource, curLayerConfig: LayersConfig, dataRecords: DataRecord[]) => {
     const { tableShowColumns, selectQueryFlag } = this.state
-    const { id, layerList } = this.props
+    const { id } = this.props
     const newId = this.currentRequestId + 1
     this.currentRequestId++
     const isSceneLayer = dataSource?.type === AllDataSourceTypes.SceneLayer
@@ -1239,9 +1245,14 @@ export default class Widget extends React.PureComponent<
         })
         // construct tableTemplate
         const layerDefinition = (dataSource as FeatureLayerDataSource)?.getLayerDefinition()
-        // --- שינוי: בנה את tableTemplate רק מהשדות שמופיעים ב-curLayerConfig.tableFields ---
+        const { allFields } = this.getFieldsFromDatasource()
+        const curColumns = tableShowColumns ? tableShowColumns.map(col => { return { jimuName: col.value } }) : curLayerConfig.tableFields.filter(item => item.visible)
+        const invisibleColumns = minusArray(allFields, curColumns).map(item => {
+          return item.jimuName
+        })
+        // For dataview, need to merge its sorting information into default
         let tableTemplate: __esri.TableTemplate
-        if (isHonorWebmap) {
+        if (isHonorWebmap) { //  && dataSource.isDataView && dataSource?.dataViewId !== OUTPUT_DATA_VIEW_ID
           const popupInfo = (dataSource as FeatureLayerDataSource)?.getPopupInfo()
           const popupAllFieldInfos = popupInfo?.fieldInfos || []
           // use schemaFields to filter used fields, some field is special and invisible in schema
@@ -1273,30 +1284,20 @@ export default class Widget extends React.PureComponent<
                 }
               })
             })
-        } else {
+        } else if (!isHonorWebmap) {
           tableTemplate = new this.TableTemplate({
-            columnTemplates: curLayerConfig.tableFields
-              .filter(item => item.visible)
-              .map(item => {
-                const itemKey = item.jimuName || item.name
-                const newItem = allFieldsSchema?.fields?.[itemKey]
-                return {
-                  fieldName: itemKey,
-                  label: newItem?.alias || item.alias || item.name,
-                  editable: editable ? this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority : false,
-                  visible: true,
-                  ...(sortFields[itemKey] ? sortFields[itemKey] : {})
-                }
-              })
+            columnTemplates: curLayerConfig.tableFields.map(item => {
+              const itemKey = item.jimuName || item.name
+              const newItem = allFieldsSchema?.fields?.[itemKey]
+              return {
+                fieldName: itemKey,
+                label: newItem?.alias,
+                ...(editable ? { editable: this.getFieldEditable(layerDefinition, itemKey) && item?.editAuthority } : {}),
+                visible: invisibleColumns.indexOf(itemKey) < 0,
+                ...(sortFields[itemKey] ? sortFields[itemKey] : {})
+              }
+            })
           })
-          // --- סנכרון tableShowColumns לסטייט ---
-          const columnsForState = curLayerConfig.tableFields
-            .filter(item => item.visible)
-            .map(item => ({
-              value: item.name,
-              label: item.alias || item.name
-            }))
-          this.setState({ tableShowColumns: columnsForState })
         }
         // check layer capabilities for delete operation
         const capabilities = layerDefinition?.capabilities
@@ -1343,7 +1344,7 @@ export default class Widget extends React.PureComponent<
           layer: featureLayer,
           pageSize: 50,
           container: container,
-          tableTemplate, // חשוב! כך יוצגו רק השדות שבחרת
+          // tableTemplate,
           // multiSortEnabled: true,
           // attachmentsEnabled: curLayerConfig.enableAttachements,
           // editingEnabled: editable,
@@ -1374,6 +1375,7 @@ export default class Widget extends React.PureComponent<
         // When table is not loaded, buttons in tool should be disabled
         reactiveUtils.watch(() => this.table.state, (tableState) => {
           if (tableState === 'loaded') {
+            this.loadTableColumnByState(curLayerConfig);
             this.setState({ tableLoaded: true })
           } else {
             this.setState({ tableLoaded: false })
@@ -1775,8 +1777,6 @@ export default class Widget extends React.PureComponent<
   onCleanFilter = async () => {
     this.resetTableExpression();
     this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
-
-
     const vaadinGrid = document.querySelector("vaadin-grid");
 
     if (vaadinGrid && vaadinGrid.shadowRoot) {
@@ -2253,40 +2253,13 @@ export default class Widget extends React.PureComponent<
 
   getInitFields = () => {
     const { activeTabId, dataSource } = this.state
-    const { config, layerList } = this.props
+    const { config } = this.props
     const { layersConfig } = config
     // data-action Table
     const daLayersConfig = this.getDataActionTable()
     const allLayersConfig = layersConfig.asMutable({ deep: true }).concat(daLayersConfig)
     const curLayer = allLayersConfig.find(item => item.id === activeTabId)
     const { tableFields, allFields, layerHonorMode } = curLayer
-    // let initTableFields;
-    // if(layerList && layerList.length > 0 && curLayer.dataActionDataSource.url){
-    //   const curLayerUrl = curLayer.dataActionDataSource.url;
-    //   const layer = layerList.find(x=>x.url == curLayerUrl);
-    //   if(layer /*&& layer.tableData && layer.tableData.displayFields*/) {
-    //       // tableFields = tableFields.filter(x=> layer.tableData.displayFields.includes(x.name))
-    //       const displayFields =  ['GUSH_NUM', 'PARCEL', 'LEGAL_AREA', 'STATUS_TEX', 'LOCALITY_N', 'REG_MUN_NA', 'COUNTY_NAM']
-    //       initTableFields = tableFields.filter(
-    //         item => displayFields.includes(item.jimuName))
-    //         .map(ele => ({ ...ele, visible: true }))
-    //         // .map(x=> x.visible = false)
-
-    //   // const initTableFields = allFields.filter(
-    //   //   item => !defaultInvisible.includes(item.jimuName)
-    //   //    && (displayFields.length === 0 ||  displayFields.includes(item.jimuName))
-    //   // ).map(ele => ({ ...ele, visible: true }));
-
-    //   }
-
-
-    //   //למצוא את השכבה לפי URL
-    //   // לבדוק אם יש נתוניםעל השדות
-    //   // לסננן.
-    // }
-
-
-
     const initSelectTableFields: ClauseValuePair[] = []
     // honor layer settings
     const isHonorWebmap = layerHonorMode === LayerHonorModeType.Webmap
@@ -2322,8 +2295,6 @@ export default class Widget extends React.PureComponent<
         ? this.table.showColumn(item.value)
         : this.table.hideColumn(item.value)
     })
-    console.log('tableShowColumns! :)');
-    
     this.setState({ tableShowColumns: valuePairs })
   }
 
