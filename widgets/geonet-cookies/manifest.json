@@ -1,0 +1,20 @@
+{
+  "name": "geonet-cookies",
+  "label": "Cookies",
+  "type": "widget",
+  "version": "1.12.0",
+  "exbVersion": "1.12.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "A minimal cookies widget for displaying cookie usage and managing user consent. Includes basic layout and config example. Does not include i18n, advanced settings, or analytics integration.",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "translatedLocales": [
+    "en",
+    "he"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 50
+  }
+}
