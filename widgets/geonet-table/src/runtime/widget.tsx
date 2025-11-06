@@ -527,10 +527,15 @@ export default class Widget extends React.PureComponent<
     const newViewInTableObj = { ...viewInTableObj };
     let needsUpdate = false;
 
-    // --- Remove layers that are no longer in layerList ---
-    const layerUrls = layerList.map(entry => entry.url || entry.layerUrl);
+    // --- Remove layers that are no longer in layerList OR are not visible ---
+    // Build array of URLs for layers that are loaded AND visible
+    const layerUrls = layerList
+      .filter(entry => (entry.visible !== false)) // only visible layers
+      .map(entry => entry.url || entry.layerUrl);
+
     Object.keys(newViewInTableObj).forEach(tabId => {
       const dsUrl = newViewInTableObj[tabId]?.daLayerItem?.dataActionDataSource?.url;
+      // Remove if not in visible layerUrls
       if (dsUrl && !layerUrls.includes(dsUrl)) {
         delete newViewInTableObj[tabId];
         needsUpdate = true;
@@ -540,7 +545,8 @@ export default class Widget extends React.PureComponent<
     // --- Add new layers that are in layerList but not in viewInTableObj ---
     for (const entry of layerList) {
       const url = entry.url || entry.layerUrl;
-      if (!url || !entry.loaded) continue;
+      // Only add if visible
+      if (!url || !entry.loaded || entry.visible === false) continue;
       // Check if already exists
       const alreadyExists = Object.values(newViewInTableObj).some(obj =>
         obj?.daLayerItem?.dataActionDataSource?.url === url
