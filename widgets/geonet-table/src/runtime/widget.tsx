@@ -39,7 +39,8 @@ import {
   ServiceManager,
   SessionManager,
   ContainerType,
-  IntlProvider
+  IntlProvider,
+  UseDataSource,
 } from 'jimu-core'
 import { Global } from 'jimu-theme'
 import {
@@ -558,6 +559,12 @@ export default class Widget extends React.PureComponent<
         item => !defaultInvisible.includes(item.jimuName)
       ).map(ele => ({ ...ele, visible: true }));
       const newItemId = `DaTable-${ds.id}`;
+      const useDataSource = {
+        dataSourceId: ds.id,
+        mainDataSourceId: ds.getMainDataSource()?.id,
+        dataViewId: ds.dataViewId,
+        rootDataSourceId: ds.getRootDataSource()?.id
+      } as UseDataSource
       const daLayerItem = {
         id: newItemId,
         name: entry.name || mapLayer.title || url,
@@ -573,7 +580,8 @@ export default class Widget extends React.PureComponent<
         selectMode: SelectionModeType.Multiple,
         dataActionObject: true,
         dataActionType: TableDataActionType.Add,
-        dataActionDataSource: ds
+        dataActionDataSource: ds,
+        useDataSource: useDataSource
       };
       newViewInTableObj[newItemId] = { daLayerItem, records: [] };
       needsUpdate = true;
@@ -1161,16 +1169,33 @@ export default class Widget extends React.PureComponent<
     if(layerList && layerList.length > 0){
       const curLayerUrl = curLayerConfig.dataActionDataSource.url;
       const layer = layerList.find(x=>x.url == curLayerUrl);
-      if(layer /*&& layer.tableData && layer.tableData.displayFields*/) {
-        const displayFields =  ['GUSH_NUM', 'PARCEL', 'LEGAL_AREA', 'STATUS_TEX', 'LOCALITY_N', 'REG_MUN_NA', 'COUNTY_NAM'];
-        const columnsForState = curLayerConfig.tableFields
-          .filter(f => displayFields.includes(f.jimuName))
-          .map(item => ({
-            value: item.name,
-            label: item.alias || item.name
-          }));
+      if(layer /*&& layer.tableData*/) {
+        if(true /*layer.tableData.displayFields.length > 0*/) {
+          const displayFields =  /*layer.tableData.displayFields ||*/ ['GUSH_NUM', 'PARCEL', 'LEGAL_AREA', 'STATUS_TEX', 'LOCALITY_N', 'REG_MUN_NA', 'COUNTY_NAM'];
+          const columnsForState = curLayerConfig.tableFields
+            .filter(f => displayFields.includes(f.jimuName))
+            .map(item => ({
+              value: item.name,
+              label: item.alias || item.name
+            }));
 
-          this.onValueChangeFromRuntime(columnsForState);
+            // show / hide columns
+            this.onValueChangeFromRuntime(columnsForState);
+
+            // displayFields.forEach((fieldName, idx) => {
+            // // חפש את העמודה בטבלה
+            // const col = curLayerConfig.tableFields.find(c => c.jimuName === fieldName);
+            //   if (col) {
+            //     // העבר את העמודה למיקום הרצוי
+            //     this.table.moveColumn(col, idx);
+            //   }
+            // })
+        }
+        // if(true /* layer.tableData.query &&  layer.tableData.query != "" */) {
+          // const query = /*layer.tableData.query || */ "LOCALITY_N LIKE '%דישון%'"
+          // this.table.layer.definitionExpression = query;
+          // this.table.layer.definitionExpression = "LOCALITY_N LIKE '%עלמה%'";
+        // }
       }
     }
   }
@@ -1375,8 +1400,8 @@ export default class Widget extends React.PureComponent<
         // When table is not loaded, buttons in tool should be disabled
         reactiveUtils.watch(() => this.table.state, (tableState) => {
           if (tableState === 'loaded') {
-            this.loadTableColumnByState(curLayerConfig);
             this.setState({ tableLoaded: true })
+            // this.loadTableColumnByState(curLayerConfig);
           } else {
             this.setState({ tableLoaded: false })
           }

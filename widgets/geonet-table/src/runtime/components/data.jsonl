@@ -1,5 +1,5 @@
- 
-{
+
+​{
     "StateId": "7993667f-d537-43b5-9a6b-9cdfb32c02be",
     "UserName": "SaraB@PWD-COMP",
     "StateData": {
@@ -23,7 +23,7 @@
                 "opacity": 1,
                 "tableData": {
                     "query": "1=1",
-                    "fields": ["OBJECTID", "GUSH_NUM", "PARCEL", "REGION_NAM"]
+                    "displayFields": ["OBJECTID", "PIN_CODE", "AREA_SQM", "USE_CODE"]
                 }
             },
             {
@@ -39,4 +39,3 @@
     "IsDefault": true,
     "StateAlias": "test"
 }
- 
