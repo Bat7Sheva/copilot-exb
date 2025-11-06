@@ -1,14 +1,16 @@
 /** @jsx jsx */
 import { css, jsx, React, type AllWidgetProps, defaultMessages as jimuCoreMessages } from 'jimu-core'
 import { type IMConfig } from '../config'
-import { defaultMessages as jimuiDefaultMessage, Popper } from 'jimu-ui';
+import { defaultMessages as jimuiDefaultMessage } from 'jimu-ui';
 import defaultMessages from './translations/default';
 import { useEffect, useState, useRef } from 'react';
-
+import ReactDOM from 'react-dom';
 
 const Widget = (props: AllWidgetProps<IMConfig>) => {
   const { config, intl } = props;
   const [visible, setVisible] = useState(true);
+  const [isAnchorReady, setIsAnchorReady] = useState(false);
+  const [portalDiv, setPortalDiv] = useState<HTMLElement | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,6 +19,30 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         setVisible(false);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    if (anchorRef.current && !isAnchorReady) {
+      setIsAnchorReady(true);
+    }
+  }, [anchorRef.current, isAnchorReady]);
+
+  useEffect(() => {
+    // יצירת div ייעודי לפורטל ב-document.body
+    let div = document.getElementById('cookies-portal-root');
+    if (!div) {
+      div = document.createElement('div');
+      div.id = 'cookies-portal-root';
+      document.body.appendChild(div);
+    }
+    setPortalDiv(div);
+
+    // ניקוי div כשקומפוננטה מוסרת
+    return () => {
+      if (div && div.parentNode) {
+        div.parentNode.removeChild(div);
+      }
+    };
   }, []);
 
   const closeWidget = () => {
@@ -35,22 +61,27 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     .cookie-anchor {
       width: 25px;
       height: 25px;
+      position: relative;
+      display: inline-block;
+      background: #fffbe6;
+      border: 2px solid #e0c200;
+      border-radius: 50%;
+      z-index: 10000;
     }
-    .cookies-box {
-      width: 100%; 
-      overflow: auto;  
-      background-color: rgba(0,0,0,0.7);  
-      -webkit-animation-name: slideIn;
-      -webkit-animation-duration: 2s;
-      inset: auto auto 0px ;  
-      animation-name: slideIn;
-      animation-duration: 2s;
-      z-index:2;
+    .cookies-portal-box {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 400px;
+      background-color: rgba(0,0,0,0.7);
       border-radius: 8px;
-      height: 100%;
+      z-index: 99999;
       display: flex;
       align-items: center;
       justify-content: center;
+      animation-name: slideIn;
+      animation-duration: 2s;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
     }
 
     .message-content{
@@ -100,34 +131,25 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
   if (!visible) return null;
 
-  return (
-    <div css={style}>
-      <div className="cookie-anchor" ref={anchorRef} tabIndex={-1} aria-label="Cookies Info"></div>
-      <Popper
-        style={{width: 'calc(98% - 300px)', borderRadius: '8px', backgroundColor: "transparent", boxShadow: "none", border: "none"  }}
-        open={true}
-        placement="right"
-        reference={anchorRef.current}
-        showArrow={false}
-        offset={[0, 12]}
-        trapFocus={false}
-        autoFocus={false}
-        css={style}
-      >
-          <div className="cookies-box">
-            <div className="message-content">
-              <span className="close-span" onClick={closeWidget} >&times;</span>
-              <div className="cookies-content">
-                <p> {formatMessage('message1')}
-                  <a href={config.linkForIroads} target="_blank" rel="noopener noreferrer">{formatMessage('message2')}</a>
-                  {formatMessage('message3')}
-                </p>
-              </div>
-            </div>
-          </div>
+  let portalContent = (
+    <div className="cookies-portal-box" css={style}>
+      <div className="message-content">
+        <span className="close-span" onClick={closeWidget} >&times;</span>
+        <div className="cookies-content">
+          <p> {formatMessage('message1')}
+            <a href={config.linkForIroads} target="_blank" rel="noopener noreferrer">{formatMessage('message2')}</a>
+            {formatMessage('message3')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
-       </Popper>
-     </div>
+  return (
+    <div>
+      <div className="cookie-anchor" ref={anchorRef} tabIndex={-1} aria-label="Cookies Info"></div>
+      {portalDiv && ReactDOM.createPortal(portalContent, portalDiv)}
+    </div>
   )
 }
 
