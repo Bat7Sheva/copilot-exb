@@ -527,6 +527,17 @@ export default class Widget extends React.PureComponent<
     const newViewInTableObj = { ...viewInTableObj };
     let needsUpdate = false;
 
+    // --- Remove layers that are no longer in layerList ---
+    const layerUrls = layerList.map(entry => entry.url || entry.layerUrl);
+    Object.keys(newViewInTableObj).forEach(tabId => {
+      const dsUrl = newViewInTableObj[tabId]?.daLayerItem?.dataActionDataSource?.url;
+      if (dsUrl && !layerUrls.includes(dsUrl)) {
+        delete newViewInTableObj[tabId];
+        needsUpdate = true;
+      }
+    });
+
+    // --- Add new layers that are in layerList but not in viewInTableObj ---
     for (const entry of layerList) {
       const url = entry.url || entry.layerUrl;
       if (!url || !entry.loaded) continue;
