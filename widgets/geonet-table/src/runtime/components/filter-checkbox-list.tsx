@@ -29,6 +29,25 @@ export const FilterCheckboxList = ({ field, props, initialValue, onSearch }: Fil
         onSearch(field.name, selectedValues, where);
     };
 
+    // Prevent scroll event from propagating to parent/table
+    const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        const { scrollTop, scrollHeight, clientHeight } = target;
+        const atTop = scrollTop === 0;
+        const atBottom = scrollTop + clientHeight === scrollHeight;
+
+        // Only prevent if actually scrolling inside the popup
+        if (
+            (e.deltaY < 0 && atTop) ||
+            (e.deltaY > 0 && atBottom)
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+        } else {
+            // Always stop propagation so parent/table doesn't scroll
+            e.stopPropagation();
+        }
+    };
 
     const style = css`
     `;
@@ -37,7 +56,10 @@ export const FilterCheckboxList = ({ field, props, initialValue, onSearch }: Fil
     return (
         <div css={style}>
 
-            <div style={{ minHeight: '50px', maxHeight: '90px', overflowY: 'auto', marginBottom: '8px' }}>
+            <div
+                style={{ minHeight: '50px', maxHeight: '90px', overflowY: 'auto', marginBottom: '8px' }}
+                onWheel={handleWheel}
+            >
                 {field.domain.codedValues.map((x, i) => (
                     <div key={i}>
                         <input
