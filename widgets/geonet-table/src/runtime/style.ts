@@ -129,22 +129,32 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
           button{
             width: 32px;
             height: 32px;
+            // הגדרות לכפתור
+            background: none;
+            transition: background 0.2s, color 0.2s;
           }
-
-          .disabled-button {
+          button:disabled {
+            background: none !important;
+            color: ${theme.colors.palette.light[600]} !important;
             opacity: 0.6;
             cursor: default;
           }
-
-          .disabled-image {
-            filter: grayscale(100%) brightness(80%);
-            opacity: 0.5;
+          button:hover:not(:disabled),
+          button:active:not(:disabled),
+          &.clicked-btn button {
+            background: ${theme.colors.palette.light[200]};
+            color: ${theme.colors.palette.dark[800]};
+            font-weight: bold;
           }
-
-          .clicked-btn {
-           border: 1px solid;
-           border-radius: 8px;
-           background-color: var(--secondary-100);
+          // הדגשה לכיתוב ליד האייקון
+          span {
+            transition: color 0.2s, font-weight 0.2s;
+          }
+          button:hover + span,
+          button:active + span,
+          &.clicked-btn span {
+            color: ${theme.colors.palette.dark[800]};
+            font-weight: bold;
           }
         }
       }

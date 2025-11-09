@@ -2328,16 +2328,31 @@ export default class Widget extends React.PureComponent<
 
   onValueChangeFromRuntime = (valuePairs: ClauseValuePair[]) => {
     if (!valuePairs) valuePairs = []
+    // Always remove hidden fields from the selected columns
+    const hideFields = [
+      { value: 'OBJECTID', label: 'OBJECTID' },
+      { value: 'SAHPE', label: 'SAHPE' },
+      { value: 'GDB_GEOMATTR_DATA', label: 'GDB_GEOMATTR_DATA' },
+    ]
+    // Remove hidden fields from valuePairs
+    const filteredValuePairs = valuePairs.filter(
+      vp => !hideFields.some(h => h.value === vp.value)
+    )
+
     const { tableShowColumns } = this.state
     const initTableFields = this.getInitFields()
     const tableColumns = tableShowColumns || initTableFields
-    const selectFlag = valuePairs.length > tableColumns.length
-    minusArray(tableColumns, valuePairs, 'value').forEach(item => {
+    const selectFlag = filteredValuePairs.length > tableColumns.length
+    minusArray(tableColumns, filteredValuePairs, 'value').forEach(item => {
       selectFlag
         ? this.table.showColumn(item.value)
         : this.table.hideColumn(item.value)
     })
-    this.setState({ tableShowColumns: valuePairs })
+
+    // Always hide these fields in the table
+    hideFields.forEach(h => this.table.hideColumn(h.value))
+
+    this.setState({ tableShowColumns: filteredValuePairs })
   }
 
   getDataActionTable = () => {
@@ -2633,7 +2648,7 @@ export default class Widget extends React.PureComponent<
           </Button>
         </div>
       }
-      <div className='top-button ml-2'>
+      <div className='top-button ml-2' style={{ display: 'flex', alignItems: 'center' }}>
         <AdvancedSelect
           size='sm'
           title={this.formatMessage('showHideCols')}
@@ -2645,8 +2660,9 @@ export default class Widget extends React.PureComponent<
           selectedValues={tableShowColumns || initSelectTableFields}
           isEmptyOptionHidden={false}
           onChange={this.onValueChangeFromRuntime}
-          customDropdownButtonContent={this.customShowHideButton}
+          customDropdownButtonContent={this.customDropdownButtonContent}
         />
+        <span style={{ marginRight: 4 }}>{this.formatMessage('showHideCols')}</span>
       </div>
       {dataSource && !mobileFlag && enableDataAction &&
         <Fragment>
@@ -2762,7 +2778,7 @@ export default class Widget extends React.PureComponent<
               selectedValues={tableShowColumns || initSelectTableFields}
               isEmptyOptionHidden={false}
               onChange={this.onValueChangeFromRuntime}
-              customDropdownButtonContent={this.customShowHideDropdownButton}
+              customDropdownButtonContent={this.customDropdownButtonContent}
             />
           </DropdownItem>
         </DropdownMenu>
@@ -3003,32 +3019,32 @@ export default class Widget extends React.PureComponent<
               {curLayer?.showCount && this.renderTableCount(tableTotal, tableSelected)}
               <div className='ds-container'>
                 {(dataSource || useDataSource) &&
-                  <DataSourceComponent
-                    widgetId={id}
+                    widgetId={id}onent
                     useDataSource={Immutable(useDataSource)}
                     dataSource={useLayerDs ? dataSource : null}
                     onDataSourceCreated={this.onDataSourceCreated}
                     onDataSourceInfoChange={this.onDataSourceInfoChange}
-                    onQueryRequired={this.onQueryRequired}
-                  />
-                }
+                    onQueryRequired={this.onQueryRequired}rceInfoChange}
+                  />onQueryRequired={this.onQueryRequired}
+                } />
               </div>
               {/* connection to map */}
-              {this.mapWidgetId &&
+              {this.mapWidgetId &&p */}
                 <JimuMapViewComponent
                   useMapWidgetId={this.mapWidgetId}
                   onActiveViewChange={this.onActiveViewChange}
-                />}
+                />}nActiveViewChange={this.onActiveViewChange}
               <Global styles={getGlobalTableTools(theme)} />
-            </div>
-          </div>
-        </div>
+            </div>bal styles={getGlobalTableTools(theme)} />
+          </div>v>
+        </div>v>
         <ReactResizeDetector
-          handleWidth
+          handleWidthetector
           handleHeight
           onResize={this.debounceOnResize}
-        />
+        />onResize={this.debounceOnResize}
       </div>
-    )
-  }
+    ) </div>
+  } )
+} }
 }
