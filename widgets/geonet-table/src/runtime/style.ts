@@ -126,9 +126,37 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
         ${mobileFlag ? 'display: none' : 'display: flex'};
         .top-button{
           display: inline-flex;
+
+          // geonet region
           button{
-            width: 32px;
+            // width: 32px;
             height: 32px;
+            border: none;
+            background: none;
+            transition: background 0.2s, color 0.2s;
+          }
+          button:disabled {
+            background: none !important;
+            color: ${theme.colors.palette.light[600]} !important;
+            opacity: 0.6;
+            cursor: default;
+          }
+          button:hover:not(:disabled),
+          button:active:not(:disabled),
+          &.clicked-btn button {
+            background: ${theme.colors.palette.light[200]};
+            color: ${theme.colors.palette.dark[800]};
+            font-weight: bold;
+          }
+          // הדגשה לכיתוב ליד האייקון
+          span {
+            transition: color 0.2s, font-weight 0.2s;
+          }
+          button:hover + span,
+          button:active + span,
+          &.clicked-btn span {
+            color: ${theme.colors.palette.dark[800]};
+            font-weight: bold;
           }
 
           .disabled-button {
@@ -146,6 +174,27 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
            border-radius: 8px;
            background-color: var(--secondary-100);
           }
+        }
+
+        .geonet-btn {
+          width: 150px;
+          display: flex;
+          flex-wrap: nowrap;
+          justify-content: space-around;
+          align-items: center;
+        }
+
+        .help {
+          width: 25px;
+          height: 25px;
+          border: 1px solid rgb(72, 72, 72);
+          margin: 3.5px 0;
+          border-radius: 50%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        // geonet region end
         }
       }
       .table-search-div{

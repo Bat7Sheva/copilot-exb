@@ -100,7 +100,7 @@ import reactiveUtils from 'esri/core/reactiveUtils'
 import { InfoOutlined } from 'jimu-icons/outlined/suggested/info'
 import FilterPopup from "./components/filter-popup";
 import ReactDOM from "react-dom/client";
-import { clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
+import { clearAllGraphics, clearGraphicLayers, drawGraghicOnMap, getAllLayers, getjimuLayerViewByLayer, getLayerByLayerUrl, queryFeatureLayer, queryService, setLayerVisibility } from 'widgets/shared-code/utils'
 import { GeonetLayerEntry, GeonetLayerState } from 'widgets/shared-code/extensions'
 import { Help } from '../../../shared-code/common-components/help'
 import lodash from 'lodash'
@@ -1669,18 +1669,18 @@ export default class Widget extends React.PureComponent<
   buildColumnFilters = () => {
     const vaadinGrid = document.querySelector("vaadin-grid");
 
-    vaadinGrid.addEventListener("click", (event: MouseEvent) => {
+    // vaadinGrid.addEventListener("click", (event: MouseEvent) => {
 
-      const ctx = (vaadinGrid as any).getEventContext(event);
+    //   const ctx = (vaadinGrid as any).getEventContext(event);
 
-      if (ctx && ctx.item) {
-        const item = ctx.item; // row data
+    //   if (ctx && ctx.item) {
+    //     const item = ctx.item; // row data
 
-        if (item?.objectId) {
-          this.filterMap(`objectId=${item?.objectId}`, true, true);
-        }
-      }
-    });
+    //     if (item?.objectId) {
+    //       this.filterMap(`objectId=${item?.objectId}`, true, true);
+    //     }
+    //   }
+    // });
 
     vaadinGrid.addEventListener("dblclick", (event: MouseEvent) => {
 
@@ -1691,6 +1691,7 @@ export default class Widget extends React.PureComponent<
 
         if (item?.objectId) {
           this.filterMap(`objectId=${item?.objectId}`, true);
+          // this.state.dataSource.selectRecordById(item.objectId);
         }
       }
     });
@@ -2086,7 +2087,7 @@ export default class Widget extends React.PureComponent<
     const { dataSource } = this.state
     if (this.table?.layer) {
       const curQuery: any = dataSource && dataSource.getCurrentQueryParams()
-      this.table.layer.definitionExpression = curQuery.where
+      this.table.layer.definitionExpression = curQuery?.where
     }
   }
 
@@ -2115,6 +2116,7 @@ export default class Widget extends React.PureComponent<
 
   onSelectionClear = () => {
     this.resetTable()
+    /* geonet*/ clearAllGraphics(this.currentJimuMapView.view as __esri.MapView);
   }
 
   onTableRefresh = () => {
@@ -2337,6 +2339,16 @@ export default class Widget extends React.PureComponent<
         ? this.table.showColumn(item.value)
         : this.table.hideColumn(item.value)
     })
+    // geonet region
+    const hideFields = [
+      // { value: 'OBJECTID', label: 'OBJECTID' },
+      { value: 'GlobalID', label: 'GlobalID' },
+      { value: 'Shape', label: 'Shape' },
+      { value: 'GDB_GEOMATTR_DATA', label: 'GDB_GEOMATTR_DATA' },
+    ]
+    hideFields.forEach(h => this.table.hideColumn(h.value))
+    // geonet region end
+
     this.setState({ tableShowColumns: valuePairs })
   }
 
@@ -2544,25 +2556,32 @@ export default class Widget extends React.PureComponent<
     return <div className='top-button-list'>
 
       {/* geonet - help */}
-      <Help helpInfo={this.props}></Help>
+      {/* <div className='top-button ml-2'> */}
+        <Help helpInfo={this.props} className='help'></Help>
+      {/* </div> */}
 
       {/* geonet - filterByMapDelineation */}
 
-      <div className='top-button ml-2'>
+      <div className='top-button ml-2 geonet-btn'>
         <Button
           size='sm'
           onClick={this.onFilterByMapDelineation}
           icon
           title={ this.hasFilterByMapDelineation ? this.formatMessage('undoFilterByMapDelineation') : this.formatMessage('filterByMapDelineation') }
-          className={ this.hasFilterByMapDelineation ? 'clicked-btn' : ''}
+          // className={ this.hasFilterByMapDelineation ? 'clicked-btn' : ''}
         >
+          {/* geonet region */}
+          <div className='mr-2'>
+            { this.hasFilterByMapDelineation ? this.formatMessage('undoFilterByMapDelineation') : this.formatMessage('filterByMapDelineation') }
+          </div>
+          {/* geonet region end */}
           <img src={this.filterImage} style={{ width: '20px', height: '20px' }} alt={this.formatMessage('filterByMapDelineation')} />
         </Button>
       </div>
 
       {/* geonet - clearFilter */}
 
-      <div className='top-button ml-2'>
+      <div className='top-button ml-2 geonet-btn'>
         <Button
           size='sm'
           onClick={this.onCleanFilter}
@@ -2571,13 +2590,18 @@ export default class Widget extends React.PureComponent<
           disabled={!tableLoaded || emptyTable || !hasFilterTable}
           className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-button' : ''}
         >
+            {/* geonet region */}
+          <div className='mr-2'>
+            {this.formatMessage('clearFilter')}
+          </div>
+          {/* geonet region end */}
           <img src={this.cleanFilterImage} style={{ width: '20px', height: '20px' }} alt="clear filter"
             className={!tableLoaded || emptyTable || !hasFilterTable ? 'disabled-image' : ''} />
         </Button>
       </div>
 
       {curLayer.enableSelect && (
-        <div className='top-button ml-2'>
+        <div className='top-button ml-2 geonet-btn'>
           <Button
             size='sm'
             onClick={this.onShowSelection}
@@ -2589,12 +2613,21 @@ export default class Widget extends React.PureComponent<
             }
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
+          {/* geonet region */}
+          <div className='mr-2'>
+            {
+              selectQueryFlag
+                ? this.formatMessage('showAll')
+                : this.formatMessage('showSelection')
+            }
+          </div>
+          {/* geonet region end */}
             {selectQueryFlag ? <MenuOutlined /> : <ShowSelectionOutlined autoFlip />}
           </Button>
         </div>
       )}
       {curLayer.enableSelect &&
-        <div className='top-button ml-2'>
+        <div className='top-button ml-2 geonet-btn'>
           <Button
             size='sm'
             onClick={this.onSelectionClear}
@@ -2602,6 +2635,11 @@ export default class Widget extends React.PureComponent<
             title={this.formatMessage('clearSelection')}
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
+          {/* geonet region */}
+          <div className='mr-2'>
+            {this.formatMessage('clearSelection')}
+          </div>
+          {/* geonet region end */}
             <ClearSelectionGeneralOutlined />
           </Button>
         </div>
@@ -2621,7 +2659,7 @@ export default class Widget extends React.PureComponent<
         </div>
       } */}
       {curLayer.enableEdit && !notAllowDel && false &&
-        <div className='top-button ml-2'>
+        <div className='top-button ml-2 geonet-btn'>
           <Button
             size='sm'
             onClick={this.onDeleteSelection}
@@ -2629,11 +2667,17 @@ export default class Widget extends React.PureComponent<
             title={this.formatMessage('delete')}
             disabled={!tableLoaded || emptyTable || !hasSelected}
           >
+          {/* geonet region */}
+          <div className='mr-2'>
+            {this.formatMessage('delete')}
+          </div>              
+          {/* geonet region end */}
             <TrashOutlined />
           </Button>
         </div>
       }
       <div className='top-button ml-2'>
+        {/* <span style={{ marginRight: 4 }}>{this.formatMessage('showHideCols')}</span> */}
         <AdvancedSelect
           size='sm'
           title={this.formatMessage('showHideCols')}
@@ -2672,7 +2716,7 @@ export default class Widget extends React.PureComponent<
       }
       {/* geonet */}
       {curLayer.enableRefresh &&
-        <div className='top-button ml-2'>
+        <div className='top-button ml-2 geonet-btn'>
           <Button
             size='sm'
             onClick={this.onTableRefresh}
@@ -2680,6 +2724,11 @@ export default class Widget extends React.PureComponent<
             title={this.formatMessage('refresh')}
             disabled={!tableLoaded || emptyTable}
           >
+            {/* geonet region */}
+          <div className='mr-2'>
+            {this.formatMessage('refresh')}
+          </div>   
+            {/* geonet region end */}
             <RefreshOutlined />
           </Button>
         </div>
