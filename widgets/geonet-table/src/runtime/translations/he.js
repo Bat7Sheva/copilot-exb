@@ -18,6 +18,8 @@ System.register([],
                     clearFilter: 'נקה סינון',
                     filterByMapDelineation: 'סינון לפי תיחום מפה',
                     undoFilterByMapDelineation: 'בטל סינון לפי תיחום מפה',
+                    noDataToDisplay: 'אין נתונים להצגה',
+                    noDataToDisplayDesc: 'בחר נתונים להצגה מרשימת שכבות',
                 })
             }
         }

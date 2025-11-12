@@ -18,6 +18,36 @@ const FilterPopup = ({ field, config, props, initialValue, cleanFilter }: Filter
 
   const popupRef = React.useRef<HTMLDivElement>(null);
 
+  // Prevent parent/table scroll when mouse is over the popup and at scroll edge
+  useEffect(() => {
+    const popup = popupRef.current;
+    if (!popup) return;
+ 
+    const handleWheel = (e: WheelEvent) => {
+      const target = popup;
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      const atTop = scrollTop === 0;
+      const atBottom = Math.ceil(scrollTop + clientHeight) >= scrollHeight;
+ 
+      if (
+        (e.deltaY < 0 && atTop) ||
+        (e.deltaY > 0 && atBottom)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        // Always stop propagation so parent/table doesn't scroll
+        e.stopPropagation();
+      }
+    };
+ 
+    popup.addEventListener('wheel', handleWheel, { passive: false });
+ 
+    return () => {
+      popup.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   const handleSearch = (fieldName: string, value: any, query?: string) => {
     cleanFilter(fieldName, value, query);
   };

@@ -5,7 +5,7 @@
   "dateRegExp": "^(0?[1-9]|[12][0-9]|3[01])[/\\-](0?[1-9]|1[012])[/\\-]\\d{4}$",
   "queries": {
     "text": "{0} LIKE '%{1}%'",
-    "date": "{0} >= timestamp '{1}' AND {0} <= timestamp '{2}'",
+    "date": "{0} >= timestamp '{1}' AND {0} < timestamp '{2}'",
     "checkboxList": "{0} IN ({1})"
   },
   "internalTutorialLink": "https://geo-app1-d.pwd.comp/videos/%D7%9E%D7%A2%D7%A8%D7%9B%D7%AA-%D7%92%D7%90%D7%95%D7%A0%D7%98.mp4",

@@ -131,7 +131,6 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
           button{
             // width: 32px;
             height: 32px;
-<<<<<<< HEAD
             border: none;
             background: none;
             transition: background 0.2s, color 0.2s;
@@ -158,34 +157,22 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
           &.clicked-btn span {
             color: ${theme.colors.palette.dark[800]};
             font-weight: bold;
-=======
-            // הגדרות לכפתור
-            background: none;
-            transition: background 0.2s, color 0.2s;
->>>>>>> 476d176b721f0bd50f2a82d054d40630976f988c
           }
-          button:disabled {
-            background: none !important;
-            color: ${theme.colors.palette.light[600]} !important;
+
+          .disabled-button {
             opacity: 0.6;
             cursor: default;
           }
-          button:hover:not(:disabled),
-          button:active:not(:disabled),
-          &.clicked-btn button {
-            background: ${theme.colors.palette.light[200]};
-            color: ${theme.colors.palette.dark[800]};
-            font-weight: bold;
+
+          .disabled-image {
+            filter: grayscale(100%) brightness(80%);
+            opacity: 0.5;
           }
-          // הדגשה לכיתוב ליד האייקון
-          span {
-            transition: color 0.2s, font-weight 0.2s;
-          }
-          button:hover + span,
-          button:active + span,
-          &.clicked-btn span {
-            color: ${theme.colors.palette.dark[800]};
-            font-weight: bold;
+
+          .clicked-btn {
+           border: 1px solid;
+           border-radius: 8px;
+           background-color: var(--secondary-100);
           }
         }
 
@@ -364,6 +351,48 @@ export function getStyle (theme: IMThemeVariables, mobileFlag: boolean, searchOn
     .esri-column__menu-container.esri-button-menu.esri-widget {
         display: none !important;
     }    
+    div.multiple-select-tool.split-line {
+     button[title="נקה בחירה"], button[title="Clear selection"] {
+        display: none !important;
+      }
+    }
+
+    .empty-table-message-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgb(247, 250, 253);
+      border-radius: 12px;
+      border: 1.5px dashed rgb(179, 198, 224);
+      margin: 32px 0px;
+
+      .empty-table-icon {
+        font-size: 48px;
+        color: #90caf9;
+        margin-bottom: 16px;
+      }
+
+      .empty-table-title {
+        font-size: 20px;
+        color: #607d8b;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+
+      .empty-table-desc {
+        font-size: 15px;
+        color: #90a4ae;
+      }
+    }
+
+    div.dropdown-menu--inner {
+      button[aria-label="עבור אל"], button[aria-label="הצג במפה"], button[aria-label="Pan to"], button[aria-label="Show on map"] {
+        display: none;
+      }
+    }
     // geonet end 
   `
 }

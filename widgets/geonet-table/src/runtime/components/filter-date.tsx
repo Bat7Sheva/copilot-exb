@@ -32,9 +32,19 @@ export const FilterDate = ({ field, config, props, initialValue, onSearch }: Fil
         onSearch(field.name, { fromDate, toDate });
     };
 
+    const addOneDay = (dateStr: string) => {
+        if (!dateStr) return dateStr
+        const date = new Date(dateStr)
+        date.setDate(date.getDate() + 1)
+        // שמירה על פורמט yyyy-MM-dd
+        return date.toISOString().slice(0, 10)
+    }
+
     const handleSearch = () => {
         if (validateDates(fromDate, toDate)) {
-            const where = props.config.queries.date.replaceAll('{0}', field.name).replace('{1}', fromDate).replace('{2}', toDate);
+            // הוסף יום אחד ל-toDate
+            const toDatePlusOne = addOneDay(toDate);
+            const where = props.config.queries.date.replaceAll('{0}', field.name).replace('{1}', fromDate).replace('{2}', toDatePlusOne);
             onSearch(field.name, { fromDate, toDate }, where);
         } else {
             setIsValid(false);

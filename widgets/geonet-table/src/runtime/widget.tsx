@@ -1709,7 +1709,7 @@ export default class Widget extends React.PureComponent<
         if (!dataCell) return;
 
         const field = fields.find(f => f.name === (dataCell as any).path && f.alias === (dataCell as any).title);
-        if (!field) return;
+        if (!field || (field.type !== "string" && field.type !== "small-integer" && field.type !== "integer" && field.type !== "date" && field.type !== "double")) return;
 
         const wrapper = document.createElement("div");
         wrapper.style.position = "relative";
@@ -1818,21 +1818,24 @@ export default class Widget extends React.PureComponent<
   }
 
   onCleanFilter = async () => {
-    this.resetTableExpression();
-    this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
-    const vaadinGrid = document.querySelector("vaadin-grid");
+    if(this.table.layer.definitionExpression != ''){
+      this.resetTableExpression();
+      this.filtersState = {} as Record<string, { name: string; value: any; query: string }>;
+      const vaadinGrid = document.querySelector("vaadin-grid");
 
-    if (vaadinGrid && vaadinGrid.shadowRoot) {
-      const headerCells = vaadinGrid.shadowRoot.querySelectorAll("thead th");
+      if (vaadinGrid && vaadinGrid.shadowRoot) {
+        const headerCells = vaadinGrid.shadowRoot.querySelectorAll("thead th");
 
-      headerCells.forEach(cell => {
-        const filterButton = cell.querySelector(".filter-button");
-        if (filterButton) {
-          (filterButton as HTMLElement).style.backgroundImage = `url(${this.filterImage})`;
-        }
-      });
+        headerCells.forEach(cell => {
+          const filterButton = cell.querySelector(".filter-button");
+          if (filterButton) {
+            (filterButton as HTMLElement).style.backgroundImage = `url(${this.filterImage})`;
+          }
+        });
+      }
+      await this.filterMap();
+      this.setState({ selectQueryFlag: !this.state.selectQueryFlag })
     }
-    await this.filterMap();
   }
 
   // Apply current map extent as a spatial filter to the layer's datasource and table
@@ -2330,27 +2333,15 @@ export default class Widget extends React.PureComponent<
 
   onValueChangeFromRuntime = (valuePairs: ClauseValuePair[]) => {
     if (!valuePairs) valuePairs = []
-    // Always remove hidden fields from the selected columns
-    const hideFields = [
-      { value: 'OBJECTID', label: 'OBJECTID' },
-      { value: 'SAHPE', label: 'SAHPE' },
-      { value: 'GDB_GEOMATTR_DATA', label: 'GDB_GEOMATTR_DATA' },
-    ]
-    // Remove hidden fields from valuePairs
-    const filteredValuePairs = valuePairs.filter(
-      vp => !hideFields.some(h => h.value === vp.value)
-    )
-
     const { tableShowColumns } = this.state
     const initTableFields = this.getInitFields()
     const tableColumns = tableShowColumns || initTableFields
-    const selectFlag = filteredValuePairs.length > tableColumns.length
-    minusArray(tableColumns, filteredValuePairs, 'value').forEach(item => {
+    const selectFlag = valuePairs.length > tableColumns.length
+    minusArray(tableColumns, valuePairs, 'value').forEach(item => {
       selectFlag
         ? this.table.showColumn(item.value)
         : this.table.hideColumn(item.value)
     })
-<<<<<<< HEAD
     // geonet region
     const hideFields = [
       // { value: 'OBJECTID', label: 'OBJECTID' },
@@ -2362,13 +2353,6 @@ export default class Widget extends React.PureComponent<
     // geonet region end
 
     this.setState({ tableShowColumns: valuePairs })
-=======
-
-    // Always hide these fields in the table
-    hideFields.forEach(h => this.table.hideColumn(h.value))
-
-    this.setState({ tableShowColumns: filteredValuePairs })
->>>>>>> 476d176b721f0bd50f2a82d054d40630976f988c
   }
 
   getDataActionTable = () => {
@@ -2695,12 +2679,8 @@ export default class Widget extends React.PureComponent<
           </Button>
         </div>
       }
-<<<<<<< HEAD
       <div className='top-button ml-2'>
         {/* <span style={{ marginRight: 4 }}>{this.formatMessage('showHideCols')}</span> */}
-=======
-      <div className='top-button ml-2' style={{ display: 'flex', alignItems: 'center' }}>
->>>>>>> 476d176b721f0bd50f2a82d054d40630976f988c
         <AdvancedSelect
           size='sm'
           title={this.formatMessage('showHideCols')}
@@ -2712,9 +2692,8 @@ export default class Widget extends React.PureComponent<
           selectedValues={tableShowColumns || initSelectTableFields}
           isEmptyOptionHidden={false}
           onChange={this.onValueChangeFromRuntime}
-          customDropdownButtonContent={this.customDropdownButtonContent}
+          customDropdownButtonContent={this.customShowHideButton}
         />
-        <span style={{ marginRight: 4 }}>{this.formatMessage('showHideCols')}</span>
       </div>
       {dataSource && !mobileFlag && enableDataAction &&
         <Fragment>
@@ -2723,6 +2702,7 @@ export default class Widget extends React.PureComponent<
               const isCurrentDataSource = item.id === activeTabId
               const dataActionDropdown = isCurrentDataSource && !emptyTable
                 ? <Fragment key={item.id}>
+                  {/* <span>{this.formatMessage('actions')}</span> */}
                   <span className='tool-dividing-line'></span>
                   <div className='top-button data-action-btn'>
                     <DataActionList
@@ -2835,7 +2815,7 @@ export default class Widget extends React.PureComponent<
               selectedValues={tableShowColumns || initSelectTableFields}
               isEmptyOptionHidden={false}
               onChange={this.onValueChangeFromRuntime}
-              customDropdownButtonContent={this.customDropdownButtonContent}
+              customDropdownButtonContent={this.customShowHideDropdownButton}
             />
           </DropdownItem>
         </DropdownMenu>
@@ -2902,13 +2882,35 @@ export default class Widget extends React.PureComponent<
       return (
 
         <React.Fragment>  {/* connection to map */}
-          <WidgetPlaceholder
+         
+         {/* geonet */}
+          <div className="empty-table-message-container">
+              <div className='empty-table-icon'>
+                  {/* <span role="img" aria-label="no data">📋</span> */}
+                  <span role="img" aria-label="no data">
+                    <svg width="48" height="48" fill="var(--secondary-700)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"></path></svg>
+                  </span>
+              </div>
+              <div className='empty-table-title'>
+                {this.formatMessage('noDataToDisplay')}
+              </div>
+              <div className='empty-table-desc'>
+                {this.formatMessage('noDataToDisplayDesc')}
+              </div>
+          </div>
+         {/* geonet end*/}
+
+         
+         {/* geonet */}
+          {/* <WidgetPlaceholder
             widgetId={id}
             iconSize='large'
             style={{ position: 'absolute', left: 0, top: 0 }}
             icon={tablePlaceholderIcon}
             data-testid='tablePlaceholder'
-          />
+          /> */}
+         {/* geonet end*/}
+
           {this.mapWidgetId &&
             <JimuMapViewComponent
               useMapWidgetId={this.mapWidgetId}
@@ -3076,32 +3078,32 @@ export default class Widget extends React.PureComponent<
               {curLayer?.showCount && this.renderTableCount(tableTotal, tableSelected)}
               <div className='ds-container'>
                 {(dataSource || useDataSource) &&
-                    widgetId={id}onent
+                  <DataSourceComponent
+                    widgetId={id}
                     useDataSource={Immutable(useDataSource)}
                     dataSource={useLayerDs ? dataSource : null}
                     onDataSourceCreated={this.onDataSourceCreated}
                     onDataSourceInfoChange={this.onDataSourceInfoChange}
-                    onQueryRequired={this.onQueryRequired}rceInfoChange}
-                  />onQueryRequired={this.onQueryRequired}
-                } />
+                    onQueryRequired={this.onQueryRequired}
+                  />
+                }
               </div>
               {/* connection to map */}
-              {this.mapWidgetId &&p */}
+              {this.mapWidgetId &&
                 <JimuMapViewComponent
                   useMapWidgetId={this.mapWidgetId}
                   onActiveViewChange={this.onActiveViewChange}
-                />}nActiveViewChange={this.onActiveViewChange}
+                />}
               <Global styles={getGlobalTableTools(theme)} />
-            </div>bal styles={getGlobalTableTools(theme)} />
-          </div>v>
-        </div>v>
+            </div>
+          </div>
+        </div>
         <ReactResizeDetector
-          handleWidthetector
+          handleWidth
           handleHeight
           onResize={this.debounceOnResize}
-        />onResize={this.debounceOnResize}
+        />
       </div>
-    ) </div>
-  } )
-} }
+    )
+  }
 }

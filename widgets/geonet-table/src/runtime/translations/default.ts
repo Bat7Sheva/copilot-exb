@@ -12,5 +12,7 @@ export default {
   fromDatePlaceHolder: 'From date',
   toDatePlaceHolder: 'To date',
   filterByMapDelineation: 'filter by map delineation',
-  undoFilterByMapDelineation: 'undo by map delineation'
+  undoFilterByMapDelineation: 'undo by map delineation',
+  noDataToDisplay: 'No data to display',
+  noDataToDisplayDesc: 'Select data to display from the Layers list'  
 }

@@ -34,9 +34,9 @@ export const FilterCheckboxList = ({ field, props, initialValue, onSearch }: Fil
         const target = e.currentTarget;
         const { scrollTop, scrollHeight, clientHeight } = target;
         const atTop = scrollTop === 0;
-        const atBottom = scrollTop + clientHeight === scrollHeight;
+        // const atBottom = scrollTop + clientHeight === scrollHeight;
+        const atBottom = Math.ceil(scrollTop + clientHeight) >= scrollHeight;
 
-        // Only prevent if actually scrolling inside the popup
         if (
             (e.deltaY < 0 && atTop) ||
             (e.deltaY > 0 && atBottom)
@@ -57,6 +57,7 @@ export const FilterCheckboxList = ({ field, props, initialValue, onSearch }: Fil
         <div css={style}>
 
             <div
+                className="filter-checkbox-list-scroll"
                 style={{ minHeight: '50px', maxHeight: '90px', overflowY: 'auto', marginBottom: '8px' }}
                 onWheel={handleWheel}
             >
