@@ -2017,71 +2017,73 @@ export default class Widget extends React.PureComponent<
   // geonet region
     onShowSelection = async () => {
     const { selectQueryFlag, dataSource } = this.state
- 
-    // If currently showing only selection -> turn off (show all)
+
+    // אם מוצג כרגע רק הבחירה - נחזיר הכל
     if (selectQueryFlag) {
-      // clear table-only filter
-      this.table.clearSelectionFilter && this.table.clearSelectionFilter()
+      // 1. הסר סינון בחירה מהטבלה
+      this.table?.clearSelectionFilter?.()
       this.resetTableExpression()
- 
-      // Try restore previous map query (if saved), else restore datasource current where or '1=1'
+
+      // 2. החזר את סינון המפה למה שהיה לפני הבחירה
       try {
-        const restoreWhere = this.prevMapQuery ?? ((dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1')
+        const restoreWhere =
+          this.prevMapQuery ??
+          (dataSource?.getCurrentQueryParams?.().where || '1=1')
         await this.filterMap(restoreWhere)
       } catch (err) {
         console.warn('Failed to reset map filter on show all', err)
       } finally {
         this.prevMapQuery = null
       }
- 
     } else {
-      // Turn on: show only selected records in table and also on the map
- 
-      // 1) save current map/table where quickly
+      // הצג רק את הבחירה בטבלה ובמפה
+
+      // 1. שמור את where הנוכחי של המפה (לשחזור עתידי)
       try {
         const currentLayerWhere = this.table?.layer?.definitionExpression
         if (typeof currentLayerWhere === 'string') {
           this.prevMapQuery = currentLayerWhere || '1=1'
         } else {
-          this.prevMapQuery = (dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1'
+          this.prevMapQuery = dataSource?.getCurrentQueryParams?.().where || '1=1'
         }
-      } catch (e) {
-        this.prevMapQuery = (dataSource && dataSource.getCurrentQueryParams && dataSource.getCurrentQueryParams().where) || '1=1';
+      } catch {
+        this.prevMapQuery = dataSource?.getCurrentQueryParams?.().where || '1=1'
       }
- 
-      // 2) apply table selection filter
-      this.table.filterBySelection && this.table.filterBySelection()
- 
-      // 3) Build a WHERE clause from selected ids and apply to map layer
+
+      // 2. סנן את הטבלה לפי הבחירה
+      this.table?.filterBySelection?.()
+
+      // 3. בנה WHERE לפי ה־objectId של הרשומות שנבחרו וסנן את המפה
       try {
-        // Prefer datasource selected ids if available
         let selectedIds: string[] = []
-        if (dataSource && dataSource.getSelectedRecordIds) {
+        if (dataSource?.getSelectedRecordIds) {
           selectedIds = dataSource.getSelectedRecordIds() || []
         }
-        // Fallback to table highlightIds if datasource not available or empty
+        // גיבוי: highlightIds מהטבלה
         if ((!selectedIds || selectedIds.length === 0) && this.table && (this.table as any).highlightIds) {
           const h = (this.table as any).highlightIds.toArray ? (this.table as any).highlightIds.toArray() : []
           selectedIds = (h || []).map(id => `${id}`)
         }
- 
+
         if (selectedIds && selectedIds.length > 0) {
           const objectIdField = this.getLayerObjectIdField()
-          // Ensure numeric ids are not quoted
-          const idsSql = selectedIds.map(id => {
-            return /^\d+$/.test(String(id)) ? String(id) : `'${String(id).replace(/'/g, "''")}'`
-          }).join(',')
+          // ids מספריים לא במרכאות, טקסט במרכאות
+          const idsSql = selectedIds.map(id =>
+            /^\d+$/.test(String(id))
+              ? String(id)
+              : `'${String(id).replace(/'/g, "''")}'`
+          ).join(',')
           const where = `${objectIdField} IN (${idsSql})`
           await this.filterMap(where)
         } else {
-          // no selection -> apply a noop (keep previous query)
+          // אין בחירה - שמור את where הקודם
           await this.filterMap(this.prevMapQuery || '1=1')
         }
       } catch (err) {
         console.warn('Failed to apply map filter for selection', err)
       }
     }
- 
+
     this.setState({ selectQueryFlag: !selectQueryFlag })
   }
   // geonet region end
