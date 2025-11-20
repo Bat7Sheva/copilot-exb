@@ -1,0 +1,192 @@
+{
+  "freeSerch": {
+    "apiUrl": "https://geo-app-qa.pwd.comp/geonet4api/api",
+    "free_searchRef": "/Search/Searchresults"
+  },
+  "roadPointSearch": {
+    "queryPointByRoutURL": "https://geo-app-qa.pwd.comp/server/rest/services/ROUTE/MapServer/exts/GeodaRestSOE/queryPointByRoute",
+    "routLayerURL": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/0",
+    "roadField": "ROADNUM"
+  },
+  "gushHelkaSearch": {
+    "gushField": "GUSH_NUM",
+    "helkaField": "PARCEL",
+    "gushHelkaQuery": "GUSH_NUM = {0} and PARCEL = {1}",
+    "gushQuery": "GUSH_NUM = {0}",
+    "gushURL": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/4",
+    "helkaURL": "https://geo-app-qa.pwd.comp/server/rest/services/GEONET/MapServer/5"
+  },
+  "addressSearch": {
+    "queryAddressLocatorURL": "https://geo-app-qa.pwd.comp/server/rest/services/LOCATORS/AL_FullAddress/GeocodeServer/findAddressCandidates",
+    "querySettlementsURL": "https://geo-app-qa.pwd.comp/server/rest/services/LOCATORS/AL_Settlements/GeocodeServer/suggest",
+    "queryStreetsURL": "https://geo-app-qa.pwd.comp/server/rest/services/LOCATORS/Streets/GeocodeServer/suggest"
+  },
+  "roadWGSSearch": {
+    "WGS84Url": "https://geo-app-qa.pwd.comp/server/rest/services/ROUTE/MapServer/exts/GeodaRestSOE/CoordinateConverterWGSToITM7P"
+  },
+  "roadSegmentSearch": {
+    "queryPointByRoutURL": "https://geo-app-qa.pwd.comp/server/rest/services/ROUTE/MapServer/exts/GeodaRestSOE/queryPointByRoute",
+    "queryRoutGeometryUrl": "https://geo-app-qa.pwd.comp/server/rest/services/ROUTE/MapServer/exts/GeodaRestSOE/getRouteGeometry"
+  },
+  "searchOptions": [
+    {
+      "key": "freeSearch",
+      "label": "חיפוש חופשי",
+      "fields": [
+        {
+          "parentKey": "freeSearch",
+          "key": "query",
+          "label": "חיפוש חופשי",
+          "type": "autocomplete",
+          "required": true,
+          "titleDisplayField":"name",
+          "displayField": "searchText"
+        }
+      ]
+    },
+    {
+      "key": "roadPointSearch",
+      "label": "נקודה בכביש",
+      "fields": [
+        {
+          "parentKey": "roadPointSearch",
+          "key": "road",
+          "label": "כביש",
+          "type": "autocomplete",
+          "required": true,
+          "displayField": "ROADNUM",
+          "autocompleteQuery": "ROADNUM like '{0}%'"
+        },
+        {
+          "parentKey": "roadPointSearch",
+          "key": "km",
+          "label": "ק\"מ",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "gushHelkaSearch",
+      "label": "חיפוש גוש חלקה",
+      "fields": [
+        {
+          "parentKey": "gushHelkaSearch",
+          "key": "gush",
+          "label": "גוש",
+          "type": "autocomplete",
+          "required": true,
+          "displayField": "GUSH_NUM",
+          "autocompleteQuery": "cast(GUSH_NUM , varchar(10)) like '%{0}%'"
+        },
+        {
+          "parentKey": "gushHelkaSearch",
+          "key": "helka",
+          "label": "חלקה",
+          "type": "autocomplete",
+          "required": false,
+          "displayField": "PARCEL",
+          "autocompleteQuery": "cast(GUSH_NUM , varchar(10)) like '%{0}%' and cast(PARCEL , varchar(10)) like '%{1}%'"
+        }
+      ]
+    },
+    {
+      "key": "addressSearch",
+      "label": "חיפוש כתובת",
+      "fields": [
+        {
+          "parentKey": "addressSearch",
+          "key": "city",
+          "label": "יישוב",
+          "type": "autocomplete",
+          "required": true,
+          "displayField": "text"
+        },
+        {
+          "parentKey": "addressSearch",
+          "key": "street",
+          "label": "רחוב",
+          "type": "autocomplete",
+          "required": false,
+          "displayField": "text"
+        },
+        {
+          "parentKey": "addressSearch",
+          "key": "houseNumber",
+          "label": "מספר בית",
+          "type": "autocomplete",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "roadITMSearch",
+      "label": "איתור נ.צ ברשת ITM",
+      "fields": [
+        {
+          "parentKey": "roadITMSearch",
+          "key": "Yval",
+          "label": "ערך Y",
+          "type": "number",
+          "required": true
+        },
+        {
+          "parentKey": "roadITMSearch",
+          "key": "Xval",
+          "label": "ערך X",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "roadWGSSearch",
+      "label": "איתור נ.צ ברשת WGS",
+      "fields": [
+        {
+          "parentKey": "roadWGSSearch",
+          "key": "lngVal",
+          "label": "ערך Longitude",
+          "type": "number",
+          "required": true
+        },
+        {
+          "parentKey": "roadWGSSearch",
+          "key": "latVal",
+          "label": "ערך Latitude",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "roadSegmentSearch",
+      "label": "קטע כביש",
+      "fields": [
+        {
+          "parentKey": "roadSegmentSearch",
+          "key": "road",
+          "label": "כביש",
+          "type": "autocomplete",
+          "required": true,
+          "displayField": "ROADNUM",
+          "autocompleteQuery": "ROADNUM like '{0}%'"
+        },
+        {
+          "parentKey": "roadSegmentSearch",
+          "key": "kmFrom",
+          "label": "מק\"מ",
+          "type": "number",
+          "required": true
+        },
+        {
+          "parentKey": "roadSegmentSearch",
+          "key": "kmTo",
+          "label": "עד ק\"מ",
+          "type": "number",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
